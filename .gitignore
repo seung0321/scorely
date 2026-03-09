@@ -1,1 +1,63 @@
-/docs
+# Dependencies
+node_modules
+.pnpm-store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist
+build
+.next
+out
+*.tsbuildinfo
+
+# Next.js
+.next/
+next-env.d.ts
+.vercel
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Certificates
+*.pem
+
+# Testing
+coverage
+
+# Misc
+.turbo
+.eslintcache
+
+# PM2
+ecosystem.config.js.backup
+.pm2
+
+# Uploads (local development)
+uploads/
+temp/
+
+# Prisma
+prisma/migrations/**/migration.sql.bak
+
+# Docs
+docs/
