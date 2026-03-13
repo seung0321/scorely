@@ -8,7 +8,7 @@ allowed-tools: Bash(git log:*), Bash(git diff:*), Bash(git status:*)
 </git_log>
 
 <git_diff>
-!`git diff HEAD~$(git log --since="today" --oneline | wc -l) HEAD`
+!`git log --since="today" --oneline --stat`
 </git_diff>
 
 위 오늘의 작업 내용을 분석해서 아래 형식으로 노션 페이지를 생성해줘.
