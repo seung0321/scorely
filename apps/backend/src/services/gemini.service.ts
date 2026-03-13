@@ -4,7 +4,7 @@ import { env } from '../config/env'
 import { AppError } from '../middlewares/errorHandler'
 
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY)
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
 type JobCriteriaEntry = {
   criteria: string[]
@@ -248,10 +248,12 @@ ${criteriaList}
   try {
     try {
       return await attemptExtract()
-    } catch {
+    } catch (firstErr) {
+      console.error('[Gemini 1차 시도 실패]', firstErr)
       return await attemptExtract()
     }
   } catch (err) {
+    console.error('[Gemini PDF 분석 최종 실패]', err)
     if (err instanceof AppError) throw err
     throw new AppError(500, 'PDF 분석 중 오류가 발생했습니다', 'AI_ERROR')
   }

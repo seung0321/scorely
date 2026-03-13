@@ -36,6 +36,7 @@ export async function uploadToS3(
     )
     return s3Key
   } catch (err) {
+    console.error('[S3 업로드 실패]', err)
     throw new AppError(500, 'S3 업로드에 실패했습니다', 'S3_ERROR')
   }
 }

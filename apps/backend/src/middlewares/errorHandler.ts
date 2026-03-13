@@ -24,6 +24,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler(
     (error: Error, _request: FastifyRequest, reply: FastifyReply) => {
       if (error instanceof AppError) {
+        app.log.error({ code: error.code, message: error.message, stack: error.stack }, 'AppError')
         return reply.status(error.statusCode).send({
           success: false,
           error: {
