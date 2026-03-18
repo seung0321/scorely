@@ -43,6 +43,7 @@ export interface ResumeSections {
   projects?: string[]
   certifications?: string
   activities?: string
+  awards?: string
 }
 
 export interface ResumeVersion {

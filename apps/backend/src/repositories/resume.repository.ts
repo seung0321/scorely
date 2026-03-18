@@ -24,6 +24,7 @@ function buildEditedTextFromSections(sections: ResumeSections): string {
   if (sections.projects) parts.push(...sections.projects)
   if (sections.certifications) parts.push(sections.certifications)
   if (sections.activities) parts.push(sections.activities)
+  if (sections.awards) parts.push(sections.awards)
   return parts.join('\n\n')
 }
 
