@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { JobCategory } from '@resumate/types'
+import { JobCategory, ResumeSections } from '@resumate/types'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { resumeService } from '../services/resume.service'
 import { success } from '../utils/apiResponse'
@@ -82,6 +82,7 @@ const resumeVersionSchema = {
     version: { type: 'number' },
     jobCategory: { type: 'string' },
     extractedText: { type: 'string' },
+    sections: { type: 'object', nullable: true },
     createdAt: { type: 'string' },
     analysis: analysisResultSchema,
   },
@@ -105,6 +106,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
                 resumeId: { type: 'string' },
                 version: { type: 'number' },
                 extractedText: { type: 'string' },
+                sections: { type: 'object' },
                 analysis: analysisResultSchema,
               },
             },
@@ -202,6 +204,59 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const result = await resumeService.saveEditedText(resumeId, userId, parsed.data.editedText)
+    return reply.send(success(result))
+  })
+
+  // PATCH /api/resume/:resumeId/sections
+  app.patch('/:resumeId/sections', {
+    schema: {
+      tags: ['Resume'],
+      summary: '이력서 섹션 저장',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['resumeId'],
+        properties: {
+          resumeId: { type: 'string' },
+        },
+      },
+      body: {
+        type: 'object',
+        properties: {
+          summary: { type: 'string' },
+          experience: { type: 'string' },
+          education: { type: 'string' },
+          skills: { type: 'string' },
+          projects: { type: 'array', items: { type: 'string' } },
+          certifications: { type: 'string' },
+          activities: { type: 'string' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                resumeId: { type: 'string' },
+                sections: { type: 'object' },
+              },
+            },
+          },
+        },
+        401: errorResponseSchema,
+        403: errorResponseSchema,
+        404: errorResponseSchema,
+      },
+    },
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    const { userId } = request.user as JwtPayload
+    const { resumeId } = request.params as { resumeId: string }
+    const sections = request.body as ResumeSections
+    const result = await resumeService.saveSections(resumeId, userId, sections)
     return reply.send(success(result))
   })
 

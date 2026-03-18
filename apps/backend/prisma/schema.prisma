@@ -25,6 +25,7 @@ model Resume {
   s3Key         String
   extractedText String    @db.Text
   editedText    String    @db.Text
+  sections      Json?
   jobCategory   String
   createdAt     DateTime  @default(now())
   analysis      Analysis?

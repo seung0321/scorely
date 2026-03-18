@@ -35,11 +35,22 @@ export interface AnalysisResult {
   oneLiner: string
 }
 
+export interface ResumeSections {
+  summary?: string
+  experience?: string
+  education?: string
+  skills?: string
+  projects?: string[]
+  certifications?: string
+  activities?: string
+}
+
 export interface ResumeVersion {
   id: string
   version: number
   jobCategory: JobCategory
   extractedText: string      // 에디터에 표시할 텍스트
+  sections: ResumeSections | null
   createdAt: string
   analysis: AnalysisResult | null
 }

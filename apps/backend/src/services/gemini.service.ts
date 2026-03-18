@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai'
-import { JobCategory, AnalysisResult, Improvement, ScoreDetail } from '@resumate/types'
+import { JobCategory, AnalysisResult, Improvement, ScoreDetail, ResumeSections } from '@resumate/types'
 import { env } from '../config/env'
 import { AppError } from '../middlewares/errorHandler'
 
@@ -190,6 +190,7 @@ export async function analyzeResume(
 
 type ExtractResult = {
   extractedText: string
+  sections: ResumeSections
   analysis: AnalysisResult
 }
 
@@ -216,8 +217,27 @@ ${criteriaList}
 
 반드시 아래 JSON 형식으로만 응답하세요. 마크다운이나 코드블록 없이 JSON만 출력하세요.
 
+섹션 분류 기준:
+- summary: 자기소개, 간략소개, 소개, About me, 프로필
+- experience: 경력, Work Experience, 직무경험 (유급 근무만)
+- education: 학력, Education
+- skills: 스킬, 기술스택, 보유기술, Skills, Tech Stack
+- projects: 프로젝트, 개인프로젝트, 팀프로젝트, 사이드프로젝트 (배열로)
+- certifications: 자격증, 수료증, Certifications
+- activities: 대외활동, 교내활동, 봉사활동, 동아리
+
+섹션 규칙:
+- 해당 섹션이 없으면 그 키 자체를 JSON에 포함하지 마세요
+- 이름, 연락처, 이메일, 전화번호, 주소, URL(블로그/깃허브/포트폴리오)은 어떤 섹션에도 포함하지 마세요
+- projects는 반드시 배열로 (프로젝트가 1개면 ["..."])
+
 {
-  "extractedText": "PDF에서 추출한 전체 텍스트",
+  "extractedText": "PDF에서 추출한 전체 텍스트 (원본 보존용)",
+  "sections": {
+    "summary": "...",
+    "experience": "...",
+    "projects": ["프로젝트1 전체 내용", "프로젝트2 전체 내용"]
+  },
   "scores": {
     "expertise": 숫자,
     "experience": 숫자,
@@ -258,7 +278,7 @@ ${criteriaList}
       .replace(/```\s*/g, '')
       .trim()
 
-    type RawExtract = RawAnalysis & { extractedText: string }
+    type RawExtract = RawAnalysis & { extractedText: string; sections: ResumeSections }
     const parsed: RawExtract = JSON.parse(cleaned) as RawExtract
 
     const scores = parsed.scores
@@ -282,6 +302,7 @@ ${criteriaList}
 
     return {
       extractedText: parsed.extractedText,
+      sections: parsed.sections ?? {},
       analysis: {
         scores,
         totalScore,
