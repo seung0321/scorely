@@ -39,6 +39,7 @@ export interface ResumeSections {
   summary?: string
   experience?: string
   education?: string
+  training?: string
   skills?: string
   projects?: string[]
   certifications?: string

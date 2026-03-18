@@ -15,16 +15,30 @@ type CreateResumeData = {
   jobCategory: string
 }
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 function buildEditedTextFromSections(sections: ResumeSections): string {
   const parts: string[] = []
-  if (sections.summary) parts.push(sections.summary)
-  if (sections.experience) parts.push(sections.experience)
-  if (sections.education) parts.push(sections.education)
-  if (sections.skills) parts.push(sections.skills)
-  if (sections.projects) parts.push(...sections.projects)
-  if (sections.certifications) parts.push(sections.certifications)
-  if (sections.activities) parts.push(sections.activities)
-  if (sections.awards) parts.push(sections.awards)
+  if (sections.summary) parts.push(stripHtml(sections.summary))
+  if (sections.experience) parts.push(stripHtml(sections.experience))
+  if (sections.education) parts.push(stripHtml(sections.education))
+  if (sections.training) parts.push(stripHtml(sections.training))
+  if (sections.skills) parts.push(stripHtml(sections.skills))
+  if (sections.projects) parts.push(...sections.projects.map(stripHtml))
+  if (sections.certifications) parts.push(stripHtml(sections.certifications))
+  if (sections.activities) parts.push(stripHtml(sections.activities))
+  if (sections.awards) parts.push(stripHtml(sections.awards))
   return parts.join('\n\n')
 }
 
