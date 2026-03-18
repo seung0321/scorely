@@ -1,11 +1,12 @@
 import { useCallback } from 'react'
-import { AnalysisResult, JobCategory, ResumeVersion } from '@resumate/types'
+import { AnalysisResult, JobCategory, ResumeVersion, ResumeSections } from '@resumate/types'
 import api from '@/lib/api'
 
 interface UploadResult {
   resumeId: string
   version: number
   extractedText: string
+  sections: ResumeSections
   analysis: AnalysisResult
 }
 
@@ -59,10 +60,14 @@ export function useResume() {
     []
   )
 
+  const saveSections = useCallback(async (resumeId: string, sections: ResumeSections): Promise<void> => {
+    await api.patch(`/api/resume/${resumeId}/sections`, sections)
+  }, [])
+
   const getScoreHistory = useCallback(async (): Promise<ScoreHistoryItem[]> => {
     const res = await api.get<{ success: true; data: ScoreHistoryItem[] }>('/api/analysis/history')
     return res.data.data
   }, [])
 
-  return { upload, getHistory, getDetail, saveText, reanalyze, getScoreHistory }
+  return { upload, getHistory, getDetail, saveText, saveSections, reanalyze, getScoreHistory }
 }
