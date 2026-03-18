@@ -75,6 +75,22 @@ const analysisResultSchema = {
   },
 }
 
+const resumeSectionsSchema = {
+  type: 'object',
+  nullable: true,
+  properties: {
+    summary: { type: 'string' },
+    experience: { type: 'string' },
+    education: { type: 'string' },
+    training: { type: 'string' },
+    skills: { type: 'string' },
+    projects: { type: 'array', items: { type: 'string' } },
+    certifications: { type: 'string' },
+    activities: { type: 'string' },
+    awards: { type: 'string' },
+  },
+}
+
 const resumeVersionSchema = {
   type: 'object',
   properties: {
@@ -82,7 +98,7 @@ const resumeVersionSchema = {
     version: { type: 'number' },
     jobCategory: { type: 'string' },
     extractedText: { type: 'string' },
-    sections: { type: 'object', nullable: true },
+    sections: resumeSectionsSchema,
     createdAt: { type: 'string' },
     analysis: analysisResultSchema,
   },
@@ -106,7 +122,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
                 resumeId: { type: 'string' },
                 version: { type: 'number' },
                 extractedText: { type: 'string' },
-                sections: { type: 'object' },
+                sections: resumeSectionsSchema,
                 analysis: analysisResultSchema,
               },
             },
