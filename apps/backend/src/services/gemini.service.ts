@@ -219,12 +219,13 @@ ${criteriaList}
 
 섹션 분류 기준:
 - summary: 자기소개, 간략소개, 소개, About me, 프로필
-- experience: 경력, Work Experience, 직무경험 (유급 근무만)
-- education: 학력, Education
+- experience: 경력, Work Experience, 직무경험 (유급 근무 + 인턴 포함)
+- education: 학력, Education, 어학연수
 - skills: 스킬, 기술스택, 보유기술, Skills, Tech Stack
 - projects: 프로젝트, 개인프로젝트, 팀프로젝트, 사이드프로젝트 (배열로)
-- certifications: 자격증, 수료증, Certifications
+- certifications: 자격증, 수료증, 어학점수(토익/OPic/JLPT/HSK 등), Certifications
 - activities: 대외활동, 교내활동, 봉사활동, 동아리
+- awards: 수상, 공모전, 해커톤, 장학금, 수상내역
 
 섹션 규칙:
 - 해당 섹션이 없으면 그 키 자체를 JSON에 포함하지 마세요
