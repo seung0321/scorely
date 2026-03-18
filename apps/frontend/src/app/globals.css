@@ -1,25 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-gray-100 text-gray-900;
-    font-family: 'Inter', sans-serif;
+    @apply bg-gray-50 text-gray-900;
   }
-}
-
-/* TipTap editor prose styles */
-.ProseMirror {
-  @apply outline-none min-h-[400px] leading-relaxed text-sm;
-}
-
-.ProseMirror p.is-editor-empty:first-child::before {
-  @apply text-gray-400;
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
 }
