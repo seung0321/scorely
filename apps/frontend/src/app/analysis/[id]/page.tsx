@@ -46,6 +46,7 @@ export default function AnalysisPage() {
       try {
         setPageLoading(true)
         const data = await getDetail(id)
+        console.log('[분석 페이지] resume.sections:', JSON.stringify(data.sections))
         setResume(data)
         setCurrentAnalysis(data.analysis)
         setCurrentVersion(data.version)
@@ -126,7 +127,8 @@ export default function AnalysisPage() {
         <div className="flex-1 overflow-y-auto p-4 min-w-0">
           <ResumeEditor
             resumeId={resume.id}
-            initialContent={resume.extractedText}
+            sections={resume.sections ?? {}}
+            extractedText={resume.extractedText}
             onSaveStatusChange={setEditorSaveStatus}
           />
         </div>
