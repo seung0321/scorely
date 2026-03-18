@@ -16,10 +16,10 @@ function toAnalysisResult(analysis: Analysis): AnalysisResult {
 
   return {
     scores: {
-      tech: analysis.techScore,
-      project: analysis.projectScore,
+      expertise: analysis.expertiseScore,
+      experience: analysis.experienceScore,
       achievement: analysis.achievementScore,
-      communication: analysis.commScore,
+      communication: analysis.communicationScore,
       structure: analysis.structureScore,
     },
     totalScore: analysis.totalScore,
@@ -81,10 +81,10 @@ export const resumeService = {
 
       await analysisRepository.create({
         resumeId: resume.id,
-        techScore: analysis.scores.tech,
-        projectScore: analysis.scores.project,
+        expertiseScore: analysis.scores.expertise,
+        experienceScore: analysis.scores.experience,
         achievementScore: analysis.scores.achievement,
-        commScore: analysis.scores.communication,
+        communicationScore: analysis.scores.communication,
         structureScore: analysis.scores.structure,
         totalScore: analysis.totalScore,
         strengths: analysis.strengths,
@@ -145,10 +145,10 @@ export const resumeService = {
 
     await analysisRepository.create({
       resumeId: newResume.id,
-      techScore: analysis.scores.tech,
-      projectScore: analysis.scores.project,
+      expertiseScore: analysis.scores.expertise,
+      experienceScore: analysis.scores.experience,
       achievementScore: analysis.scores.achievement,
-      commScore: analysis.scores.communication,
+      communicationScore: analysis.scores.communication,
       structureScore: analysis.scores.structure,
       totalScore: analysis.totalScore,
       strengths: analysis.strengths,

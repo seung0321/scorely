@@ -1,40 +1,68 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 import { JobCategory, AnalysisResult, Improvement, ScoreDetail } from '@resumate/types'
 import { env } from '../config/env'
 import { AppError } from '../middlewares/errorHandler'
 
-const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY)
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY })
+const MODEL = 'gemini-2.5-flash'
 
-type JobCriteriaEntry = {
+type CategoryGuideEntry = {
   criteria: string[]
   keywords: string[]
 }
 
-const JOB_CRITERIA: Record<JobCategory, JobCriteriaEntry> = {
-  '백엔드 개발자': {
-    criteria: ['기술 스택 적합도', '프로젝트 경험', '성과 수치화', '협업/커뮤니케이션', '이력서 구성/가독성'],
-    keywords: ['Node.js', 'API 설계', 'DB', '서버', '배포', '트랜잭션', '성능 최적화', 'CI/CD'],
+const CATEGORY_GUIDE: Record<JobCategory, CategoryGuideEntry> = {
+  'IT개발·데이터': {
+    criteria: ['기술 스택 적합도', '프로젝트·실무 경험', '성과 수치화', '협업/커뮤니케이션', '이력서 구성/가독성'],
+    keywords: ['GitHub', 'API 설계', '클라우드(AWS/GCP/Azure)', 'CI/CD', '데이터베이스', '알고리즘', '성능 최적화', 'Python', 'Java', 'SQL'],
   },
-  '프론트엔드 개발자': {
-    criteria: ['기술 스택 적합도', 'UI/UX 구현 경험', '성과 수치화', '협업/커뮤니케이션', '이력서 구성/가독성'],
-    keywords: ['React', 'Vue', 'CSS', '웹 성능', '반응형', '접근성', '상태관리'],
+  '디자인': {
+    criteria: ['툴 숙련도 및 디자인 역량', '포트폴리오·실무 경험', '성과 수치화(전환율·사용성 개선)', '협업/커뮤니케이션', '이력서·포트폴리오 구성'],
+    keywords: ['Figma', 'Adobe XD', 'Illustrator', 'Photoshop', 'UX 리서치', '디자인 시스템', '브랜딩', '프로토타입'],
   },
-  '기획자': {
-    criteria: ['기획/서비스 경험', '데이터 분석 역량', '커뮤니케이션', '프로젝트 관리', '이력서 구성/가독성'],
-    keywords: ['PRD', '유저리서치', 'KPI', '와이어프레임', 'A/B테스트', '로드맵'],
+  '마케팅·광고': {
+    criteria: ['마케팅 채널 전문성', '캠페인·광고 집행 경험', '성과 수치화(ROAS·CPA·전환율)', '협업/커뮤니케이션', '이력서 구성/가독성'],
+    keywords: ['ROAS', 'CPA', 'CTR', 'SEO', 'SEM', '퍼포먼스 마케팅', 'SNS 운영', 'Google Analytics', '그로스 해킹'],
   },
-  '마케터': {
-    criteria: ['캠페인 경험', '데이터 분석 역량', '성과 수치화', '채널 운영 경험', '이력서 구성/가독성'],
-    keywords: ['ROAS', 'CPA', 'SNS', '콘텐츠', '퍼포먼스 마케팅', '그로스 해킹'],
+  '경영·기획': {
+    criteria: ['전략·기획 전문성', '프로젝트·사업 관리 경험', '성과 수치화(매출·효율 개선)', '이해관계자 커뮤니케이션', '이력서 구성/가독성'],
+    keywords: ['사업계획서', 'KPI', 'OKR', '로드맵', '시장 조사', 'PMO', '예산 관리', '프로세스 개선'],
   },
-  '디자이너': {
-    criteria: ['포트폴리오 경험', '툴 숙련도', 'UX 이해도', '협업/커뮤니케이션', '이력서 구성/가독성'],
-    keywords: ['Figma', '사용자경험', '브랜딩', '프로토타입', '디자인 시스템'],
+  '영업·판매': {
+    criteria: ['영업 도메인 전문성', '영업·거래처 관리 경험', '매출·달성률 수치화', '고객·파트너 커뮤니케이션', '이력서 구성/가독성'],
+    keywords: ['매출 목표 달성', '신규 고객 개척', 'B2B', 'B2C', 'CRM', '거래처 관리', '협상', '계약 체결'],
   },
-  '데이터 분석가': {
-    criteria: ['분석 프로젝트 경험', '기술 스택 적합도', '성과 수치화', '시각화 역량', '이력서 구성/가독성'],
-    keywords: ['Python', 'SQL', '태블로', '통계', '머신러닝', '대시보드'],
+  '회계·세무·재무': {
+    criteria: ['회계·세무 전문 지식', '재무 실무 경험', '성과 수치화(비용 절감·재무 개선)', '유관부서 커뮤니케이션', '이력서 구성/가독성'],
+    keywords: ['재무제표', '세무신고', '원가 분석', 'ERP', 'IFRS', '결산', '예산 편성', '공인회계사(CPA)', '세무사'],
+  },
+  '인사·노무': {
+    criteria: ['인사·노무 전문 지식', 'HR 실무 경험', '성과 수치화(채용 효율·이직률)', '구성원·경영진 커뮤니케이션', '이력서 구성/가독성'],
+    keywords: ['채용', '온보딩', '노무관리', '급여 처리', '성과평가', '조직문화', '근로기준법', 'HR 시스템'],
+  },
+  '의료·제약': {
+    criteria: ['의료·제약 전문 지식 및 자격', '임상·현장 실무 경험', '성과 수치화(환자 지표·임상 결과)', '다직종 협업/커뮤니케이션', '이력서 구성/가독성'],
+    keywords: ['임상 경험', 'GMP', '의약품 허가', '전자의무기록(EMR)', '의료기기', '임상시험(CRA/CRC)', '간호사', '의사면허'],
+  },
+  '금융·보험': {
+    criteria: ['금융·보험 전문 지식 및 자격', '금융 상품·리스크 관리 경험', '성과 수치화(운용 수익·손해율)', '고객·내부 커뮤니케이션', '이력서 구성/가독성'],
+    keywords: ['자산운용', '리스크 관리', '여신 심사', '보험 언더라이팅', 'CFA', 'FRM', '파생상품', 'AML'],
+  },
+  '연구·R&D': {
+    criteria: ['연구 분야 전문성 및 논문·특허', '연구 프로젝트·실험 경험', '성과 수치화(논문 피인용·특허 등록)', '연구팀 협업/커뮤니케이션', '이력서 구성/가독성'],
+    keywords: ['논문', '특허', 'R&D 과제', '실험 설계', '데이터 분석', '연구비 수주', '학술 발표', '기술이전'],
+  },
+  '교육': {
+    criteria: ['교과 전문성 및 교원 자격', '교육 현장·강의 경험', '성과 수치화(합격률·수강생 만족도)', '학습자·학부모 커뮤니케이션', '이력서 구성/가독성'],
+    keywords: ['정교사 자격증', '커리큘럼 개발', 'LMS', '성적 향상', '수업 설계', '에듀테크', '교재 개발'],
+  },
+  '생산·제조': {
+    criteria: ['생산·공정 전문 기술', '제조 현장 실무 경험', '성과 수치화(불량률·생산성 개선)', '현장·유관부서 커뮤니케이션', '이력서 구성/가독성'],
+    keywords: ['생산 계획', '품질 관리(QC/QA)', 'ISO', '설비 보전', '6시그마', '린 제조', 'SCM', '안전관리'],
+  },
+  '기타': {
+    criteria: ['직무 관련 전문 역량', '관련 실무 경험', '성과 수치화', '조직 내 커뮤니케이션', '이력서 구성/가독성'],
+    keywords: ['자격증', '직무 교육', '프로젝트 참여', '팀워크', '문제 해결', '목표 달성', '외국어'],
   },
 }
 
@@ -47,11 +75,16 @@ type RawAnalysis = {
 }
 
 function buildPrompt(jobCategory: JobCategory, resumeText: string): string {
-  const { criteria, keywords } = JOB_CRITERIA[jobCategory]
+  const { criteria, keywords } = CATEGORY_GUIDE[jobCategory]
   const criteriaList = criteria.map((c) => `- ${c}`).join('\n')
   const keywordList = keywords.join(', ')
 
-  return `당신은 10년 경력의 채용 전문가입니다.
+  const etcInstruction =
+    jobCategory === '기타'
+      ? '\n이력서를 먼저 분석해서 직무를 스스로 파악한 후 그에 맞는 기준으로 평가하세요.\n'
+      : ''
+
+  return `당신은 10년 경력의 채용 전문가입니다.${etcInstruction}
 아래 이력서 텍스트를 '${jobCategory}' 직군 기준으로 분석해주세요.
 
 분석 기준 (각 0~100점):
@@ -63,8 +96,8 @@ ${criteriaList}
 
 {
   "scores": {
-    "tech": 숫자,
-    "project": 숫자,
+    "expertise": 숫자,
+    "experience": 숫자,
     "achievement": 숫자,
     "communication": 숫자,
     "structure": 숫자
@@ -95,8 +128,8 @@ function parseAndValidate(raw: string): AnalysisResult {
 
   const scores = parsed.scores
   const allScores = [
-    scores.tech,
-    scores.project,
+    scores.expertise,
+    scores.experience,
     scores.achievement,
     scores.communication,
     scores.structure,
@@ -128,15 +161,21 @@ export async function analyzeResume(
   const prompt = buildPrompt(jobCategory, resumeText)
 
   try {
-    const result = await model.generateContent(prompt)
-    const raw = result.response.text()
+    const result = await ai.models.generateContent({
+      model: MODEL,
+      contents: prompt,
+    })
+    const raw = result.text ?? ''
 
     try {
       return parseAndValidate(raw)
     } catch {
       // 1회 재시도
-      const retryResult = await model.generateContent(prompt)
-      const retryRaw = retryResult.response.text()
+      const retryResult = await ai.models.generateContent({
+        model: MODEL,
+        contents: prompt,
+      })
+      const retryRaw = retryResult.text ?? ''
       try {
         return parseAndValidate(retryRaw)
       } catch {
@@ -158,11 +197,16 @@ export async function extractTextAndAnalyze(
   pdfBuffer: Buffer,
   jobCategory: JobCategory,
 ): Promise<ExtractResult> {
-  const { criteria, keywords } = JOB_CRITERIA[jobCategory]
+  const { criteria, keywords } = CATEGORY_GUIDE[jobCategory]
   const criteriaList = criteria.map((c) => `- ${c}`).join('\n')
   const keywordList = keywords.join(', ')
 
-  const prompt = `당신은 10년 경력의 채용 전문가입니다.
+  const etcInstruction =
+    jobCategory === '기타'
+      ? '\n이력서를 먼저 분석해서 직무를 스스로 파악한 후 그에 맞는 기준으로 평가하세요.\n'
+      : ''
+
+  const prompt = `당신은 10년 경력의 채용 전문가입니다.${etcInstruction}
 첨부된 PDF 이력서에서 텍스트를 추출하고, '${jobCategory}' 직군 기준으로 분석해주세요.
 
 분석 기준 (각 0~100점):
@@ -175,8 +219,8 @@ ${criteriaList}
 {
   "extractedText": "PDF에서 추출한 전체 텍스트",
   "scores": {
-    "tech": 숫자,
-    "project": 숫자,
+    "expertise": 숫자,
+    "experience": 숫자,
     "achievement": 숫자,
     "communication": 숫자,
     "structure": 숫자
@@ -196,16 +240,19 @@ ${criteriaList}
   const pdfBase64 = pdfBuffer.toString('base64')
 
   const attemptExtract = async (): Promise<ExtractResult> => {
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          mimeType: 'application/pdf',
-          data: pdfBase64,
+    const result = await ai.models.generateContent({
+      model: MODEL,
+      contents: [
+        {
+          inlineData: {
+            mimeType: 'application/pdf',
+            data: pdfBase64,
+          },
         },
-      },
-    ])
-    const raw = result.response.text()
+        { text: prompt },
+      ],
+    })
+    const raw = result.text ?? ''
     const cleaned = raw
       .replace(/```json\s*/gi, '')
       .replace(/```\s*/g, '')
@@ -216,8 +263,8 @@ ${criteriaList}
 
     const scores = parsed.scores
     const allScores = [
-      scores.tech,
-      scores.project,
+      scores.expertise,
+      scores.experience,
       scores.achievement,
       scores.communication,
       scores.structure,

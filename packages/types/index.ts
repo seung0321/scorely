@@ -1,14 +1,21 @@
 export type JobCategory =
-  | '백엔드 개발자'
-  | '프론트엔드 개발자'
-  | '기획자'
-  | '마케터'
-  | '디자이너'
-  | '데이터 분석가'
+  | 'IT개발·데이터'
+  | '디자인'
+  | '마케팅·광고'
+  | '경영·기획'
+  | '영업·판매'
+  | '회계·세무·재무'
+  | '인사·노무'
+  | '의료·제약'
+  | '금융·보험'
+  | '연구·R&D'
+  | '교육'
+  | '생산·제조'
+  | '기타'
 
 export interface ScoreDetail {
-  tech: number
-  project: number
+  expertise: number
+  experience: number
   achievement: number
   communication: number
   structure: number
