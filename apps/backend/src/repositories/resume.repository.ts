@@ -1,6 +1,7 @@
-import { Resume, Analysis } from '@prisma/client'
+import { Resume, Analysis, Prisma } from '@prisma/client'
 import { prisma } from '../config/prisma'
 import { AppError } from '../middlewares/errorHandler'
+import { ResumeSections } from '@resumate/types'
 
 type ResumeWithAnalysis = Resume & { analysis: Analysis | null }
 
@@ -10,8 +11,23 @@ type CreateResumeData = {
   s3Key: string
   extractedText: string
   editedText: string
+  sections: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput
   jobCategory: string
 }
+
+function buildEditedTextFromSections(sections: ResumeSections): string {
+  const parts: string[] = []
+  if (sections.summary) parts.push(sections.summary)
+  if (sections.experience) parts.push(sections.experience)
+  if (sections.education) parts.push(sections.education)
+  if (sections.skills) parts.push(sections.skills)
+  if (sections.projects) parts.push(...sections.projects)
+  if (sections.certifications) parts.push(sections.certifications)
+  if (sections.activities) parts.push(sections.activities)
+  return parts.join('\n\n')
+}
+
+export { buildEditedTextFromSections }
 
 export const resumeRepository = {
   async create(data: CreateResumeData): Promise<Resume> {
@@ -77,6 +93,34 @@ export const resumeRepository = {
       return await prisma.resume.update({
         where: { id: resumeId },
         data: { editedText },
+      })
+    } catch (err) {
+      if (err instanceof AppError) throw err
+      throw new AppError(500, 'DB 업데이트 오류', 'INTERNAL_ERROR')
+    }
+  },
+
+  async updateSections(
+    resumeId: string,
+    userId: string,
+    sections: ResumeSections,
+  ): Promise<Resume> {
+    try {
+      const resume = await prisma.resume.findUnique({ where: { id: resumeId } })
+
+      if (!resume) {
+        throw new AppError(404, '이력서를 찾을 수 없습니다', 'NOT_FOUND')
+      }
+
+      if (resume.userId !== userId) {
+        throw new AppError(403, '접근 권한이 없습니다', 'FORBIDDEN')
+      }
+
+      const editedText = buildEditedTextFromSections(sections)
+
+      return await prisma.resume.update({
+        where: { id: resumeId },
+        data: { sections: sections as Prisma.InputJsonValue, editedText },
       })
     } catch (err) {
       if (err instanceof AppError) throw err

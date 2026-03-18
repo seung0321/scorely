@@ -1,10 +1,10 @@
-import { JobCategory, AnalysisResult, ResumeVersion } from '@resumate/types'
-import { resumeRepository } from '../repositories/resume.repository'
+import { JobCategory, AnalysisResult, ResumeVersion, ResumeSections } from '@resumate/types'
+import { resumeRepository, buildEditedTextFromSections } from '../repositories/resume.repository'
 import { analysisRepository } from '../repositories/analysis.repository'
 import { uploadToS3, deleteFromS3, validatePdfFile } from '../utils/s3'
 import { extractTextAndAnalyze, analyzeResume } from './gemini.service'
 import { AppError } from '../middlewares/errorHandler'
-import { Analysis } from '@prisma/client'
+import { Analysis, Prisma } from '@prisma/client'
 
 function toAnalysisResult(analysis: Analysis): AnalysisResult {
   const strengths = analysis.strengths as string[]
@@ -34,6 +34,7 @@ function toResumeVersion(resume: {
   version: number
   jobCategory: string
   extractedText: string
+  sections: unknown
   createdAt: Date
   analysis: Analysis | null
 }): ResumeVersion {
@@ -42,6 +43,7 @@ function toResumeVersion(resume: {
     version: resume.version,
     jobCategory: resume.jobCategory as JobCategory,
     extractedText: resume.extractedText,
+    sections: (resume.sections as ResumeSections) ?? null,
     createdAt: resume.createdAt.toISOString(),
     analysis: resume.analysis ? toAnalysisResult(resume.analysis) : null,
   }
@@ -59,6 +61,7 @@ export const resumeService = {
     resumeId: string
     version: number
     extractedText: string
+    sections: ResumeSections
     analysis: AnalysisResult
   }> {
     validatePdfFile(mimetype, fileSize)
@@ -66,7 +69,7 @@ export const resumeService = {
     const s3Key = await uploadToS3(fileBuffer, userId, originalName)
 
     try {
-      const { extractedText, analysis } = await extractTextAndAnalyze(fileBuffer, jobCategory)
+      const { extractedText, sections, analysis } = await extractTextAndAnalyze(fileBuffer, jobCategory)
 
       const version = await resumeRepository.getNextVersion(userId)
 
@@ -75,7 +78,8 @@ export const resumeService = {
         version,
         s3Key,
         extractedText,
-        editedText: extractedText,
+        editedText: buildEditedTextFromSections(sections),
+        sections: sections as Prisma.InputJsonValue,
         jobCategory,
       })
 
@@ -96,6 +100,7 @@ export const resumeService = {
         resumeId: resume.id,
         version: resume.version,
         extractedText,
+        sections,
         analysis,
       }
     } catch (err) {
@@ -103,6 +108,15 @@ export const resumeService = {
       if (err instanceof AppError) throw err
       throw new AppError(500, '이력서 처리 중 오류가 발생했습니다', 'INTERNAL_ERROR')
     }
+  },
+
+  async saveSections(
+    resumeId: string,
+    userId: string,
+    sections: ResumeSections,
+  ): Promise<{ resumeId: string; sections: ResumeSections }> {
+    const updated = await resumeRepository.updateSections(resumeId, userId, sections)
+    return { resumeId: updated.id, sections: updated.sections as ResumeSections }
   },
 
   async saveEditedText(
@@ -140,6 +154,7 @@ export const resumeService = {
       s3Key: existing.s3Key,
       extractedText: existing.editedText,
       editedText: existing.editedText,
+      sections: (existing.sections as Prisma.InputJsonValue) ?? null,
       jobCategory: targetCategory,
     })
 
