@@ -20,13 +20,13 @@ interface RadarChartProps {
 
 export default function RadarChart({ scores }: RadarChartProps) {
   const data = {
-    labels: ['기술', '프로젝트', '성과', '협업', '구성'],
+    labels: ['전문성', '실무 경험', '성과', '협업', '구성'],
     datasets: [
       {
         label: '점수',
         data: [
-          scores.tech,
-          scores.project,
+          scores.expertise,
+          scores.experience,
           scores.achievement,
           scores.communication,
           scores.structure,
