@@ -4,10 +4,10 @@ import { AppError } from '../middlewares/errorHandler'
 
 type CreateAnalysisData = {
   resumeId: string
-  techScore: number
-  projectScore: number
+  expertiseScore: number
+  experienceScore: number
   achievementScore: number
-  commScore: number
+  communicationScore: number
   structureScore: number
   totalScore: number
   strengths: string[]

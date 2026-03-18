@@ -37,11 +37,11 @@ model Analysis {
   id               String   @id @default(cuid())
   resumeId         String   @unique
   resume           Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
-  techScore        Int
-  projectScore     Int
-  achievementScore Int
-  commScore        Int
-  structureScore   Int
+  expertiseScore     Int
+  experienceScore    Int
+  achievementScore   Int
+  communicationScore Int
+  structureScore     Int
   totalScore       Int
   strengths        Json
   improvements     Json
