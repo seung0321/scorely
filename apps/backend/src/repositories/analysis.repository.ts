@@ -12,6 +12,7 @@ type CreateAnalysisData = {
   totalScore: number
   strengths: string[]
   improvements: object[]
+  penalties: object[]
   oneLiner: string
 }
 

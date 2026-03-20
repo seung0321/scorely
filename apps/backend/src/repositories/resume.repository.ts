@@ -13,6 +13,7 @@ type CreateResumeData = {
   editedText: string
   sections: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput
   jobCategory: string
+  experienceLevel: string
 }
 
 function stripHtml(html: string): string {
@@ -28,17 +29,23 @@ function stripHtml(html: string): string {
     .trim()
 }
 
+function toStr(val: string | string[] | undefined): string {
+  if (!val) return ''
+  if (Array.isArray(val)) return val.join('\n\n')
+  return val
+}
+
 function buildEditedTextFromSections(sections: ResumeSections): string {
   const parts: string[] = []
-  if (sections.summary) parts.push(stripHtml(sections.summary))
-  if (sections.experience) parts.push(stripHtml(sections.experience))
-  if (sections.education) parts.push(stripHtml(sections.education))
-  if (sections.training) parts.push(stripHtml(sections.training))
-  if (sections.skills) parts.push(stripHtml(sections.skills))
+  if (sections.summary) parts.push(stripHtml(toStr(sections.summary)))
+  if (sections.experience) parts.push(stripHtml(toStr(sections.experience)))
+  if (sections.education) parts.push(stripHtml(toStr(sections.education)))
+  if (sections.training) parts.push(stripHtml(toStr(sections.training)))
+  if (sections.skills) parts.push(stripHtml(toStr(sections.skills)))
   if (sections.projects) parts.push(...sections.projects.map(stripHtml))
-  if (sections.certifications) parts.push(stripHtml(sections.certifications))
-  if (sections.activities) parts.push(stripHtml(sections.activities))
-  if (sections.awards) parts.push(stripHtml(sections.awards))
+  if (sections.certifications) parts.push(stripHtml(toStr(sections.certifications)))
+  if (sections.activities) parts.push(stripHtml(toStr(sections.activities)))
+  if (sections.awards) parts.push(stripHtml(toStr(sections.awards)))
   return parts.join('\n\n')
 }
 

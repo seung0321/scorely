@@ -128,3 +128,21 @@ NEXT_PUBLIC_API_URL=http://localhost:3000
 - JWT 만료: 7일
 - PDF 최대 크기: 10MB
 - bcrypt saltRounds: 10
+
+## PR 문서 작성 규칙
+사용자가 "PR 작성해줘" 또는 "PR 문서 만들어줘"라고 하면 아래 절차를 자동으로 따른다.
+- "백엔드 PR 작성해줘" → 백엔드 변경사항만 담은 문서 1개 생성
+- "프론트 PR 작성해줘" → 프론트엔드 변경사항만 담은 문서 1개 생성
+- "PR 작성해줘" (범위 미지정) → 백엔드/프론트엔드 각각 분리해서 문서 2개 생성
+
+1. `git diff HEAD` 또는 `git log`로 변경 내용 파악
+2. `docs/pr/` 디렉토리에서 가장 최근 PR 파일을 참고해 포맷 확인
+3. 변경 범위에 맞는 파일명으로 `docs/pr/pr-{기능명}-{backend|frontend}.md` 생성
+4. 포함 항목:
+   - PR 제목 (feat/fix/refactor 컨벤션)
+   - 설명 (변경 요약 bullet)
+   - 🚀 git add/commit/push 명령어 (디렉토리 단위 add)
+   - ✅ PR 체크리스트
+   - 📊 변경 파일 트리
+   - ⚠️ 주요 변경 포인트 표 (필요 시)
+5. PR은 사용자가 직접 GitHub에서 올린다 (자동 push/PR 생성 금지)

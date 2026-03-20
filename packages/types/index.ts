@@ -13,6 +13,8 @@ export type JobCategory =
   | '생산·제조'
   | '기타'
 
+export type ExperienceLevel = '신입' | '경력'
+
 export interface ScoreDetail {
   expertise: number
   experience: number
@@ -27,11 +29,18 @@ export interface Improvement {
   suggestion: string
 }
 
+export interface Penalty {
+  category: string
+  reason: string
+  deduction: number
+}
+
 export interface AnalysisResult {
   scores: ScoreDetail
   totalScore: number
   strengths: string[]
   improvements: Improvement[]
+  penalties: Penalty[]
   oneLiner: string
 }
 
@@ -51,6 +60,7 @@ export interface ResumeVersion {
   id: string
   version: number
   jobCategory: JobCategory
+  experienceLevel: ExperienceLevel
   extractedText: string      // 에디터에 표시할 텍스트
   sections: ResumeSections | null
   createdAt: string
