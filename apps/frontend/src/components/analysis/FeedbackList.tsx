@@ -1,12 +1,13 @@
-import { Improvement } from '@resumate/types'
+import { Improvement, Penalty } from '@resumate/types'
 
 interface FeedbackListProps {
   strengths: string[]
   improvements: Improvement[]
+  penalties?: Penalty[]
   oneLiner: string
 }
 
-export default function FeedbackList({ strengths, improvements, oneLiner }: FeedbackListProps) {
+export default function FeedbackList({ strengths, improvements, penalties = [], oneLiner }: FeedbackListProps) {
   return (
     <div className="space-y-4">
       <div>
@@ -23,6 +24,25 @@ export default function FeedbackList({ strengths, improvements, oneLiner }: Feed
           ))}
         </div>
       </div>
+
+      {penalties.length > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+            <span className="w-1 h-4 bg-red-500 rounded-full inline-block" />
+            감점 항목
+          </h4>
+          <div className="space-y-2">
+            {penalties.map((item, i) => (
+              <div key={i} className="bg-red-50 border-l-4 border-red-400 rounded-lg px-3 py-2">
+                <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                  🔻 {item.category}
+                </span>
+                <p className="text-sm text-red-800 mt-1.5">{item.reason}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div>
         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">

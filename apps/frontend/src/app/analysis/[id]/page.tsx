@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { AnalysisResult, JobCategory, ResumeVersion } from '@resumate/types'
+import { AnalysisResult, JobCategory, ExperienceLevel, ResumeVersion } from '@resumate/types'
 import { useAuth } from '@/contexts/AuthContext'
 import { useResume } from '@/hooks/useResume'
 import { getApiErrorMessage } from '@/contexts/AuthContext'
@@ -60,11 +60,11 @@ export default function AnalysisPage() {
   }, [id, user, getDetail])
 
   const handleReanalyze = useCallback(
-    async (jobCategory: JobCategory) => {
+    async (jobCategory: JobCategory, experienceLevel: ExperienceLevel) => {
       if (!resume) return
       try {
         const prevScore = currentAnalysis?.totalScore
-        const result = await reanalyze(resume.id, jobCategory)
+        const result = await reanalyze(resume.id, jobCategory, experienceLevel)
         setPreviousScore(prevScore)
         setCurrentAnalysis(result.analysis)
         setCurrentVersion(result.version)
@@ -115,6 +115,9 @@ export default function AnalysisPage() {
           <span className="bg-gray-100 px-2 py-0.5 rounded-full text-xs">
             {resume.jobCategory}
           </span>
+          <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-medium">
+            {resume.experienceLevel}
+          </span>
           <span className="text-xs">
             {new Date(resume.createdAt).toLocaleDateString('ko-KR')}
           </span>
@@ -140,6 +143,7 @@ export default function AnalysisPage() {
             version={currentVersion}
             previousScore={previousScore}
             currentJobCategory={resume.jobCategory}
+            currentExperienceLevel={resume.experienceLevel}
             isLoading={false}
             isSaving={editorSaveStatus === 'saving'}
             onReanalyze={handleReanalyze}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { JobCategory } from '@resumate/types'
+import { JobCategory, ExperienceLevel } from '@resumate/types'
 
 const JOB_CATEGORIES: JobCategory[] = [
   'IT개발·데이터',
@@ -20,7 +20,7 @@ const JOB_CATEGORIES: JobCategory[] = [
 ]
 
 interface UploadDropzoneProps {
-  onUpload: (file: File, jobCategory: JobCategory) => Promise<void>
+  onUpload: (file: File, jobCategory: JobCategory, experienceLevel: ExperienceLevel) => Promise<void>
   isLoading: boolean
 }
 
@@ -28,6 +28,7 @@ export default function UploadDropzone({ onUpload, isLoading }: UploadDropzonePr
   const [isDragOver, setIsDragOver] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [jobCategory, setJobCategory] = useState<JobCategory | ''>('')
+  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel | ''>('')
   const [fileError, setFileError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -61,11 +62,11 @@ export default function UploadDropzone({ onUpload, isLoading }: UploadDropzonePr
   }
 
   const handleSubmit = async () => {
-    if (!selectedFile || !jobCategory) return
-    await onUpload(selectedFile, jobCategory)
+    if (!selectedFile || !jobCategory || !experienceLevel) return
+    await onUpload(selectedFile, jobCategory, experienceLevel)
   }
 
-  const canSubmit = selectedFile && jobCategory && !isLoading
+  const canSubmit = selectedFile && jobCategory && experienceLevel && !isLoading
 
   return (
     <div className="space-y-4">
@@ -129,6 +130,27 @@ export default function UploadDropzone({ onUpload, isLoading }: UploadDropzonePr
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
+      </div>
+
+      {/* 경력 수준 선택 */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">경력 수준</label>
+        <div className="flex gap-2">
+          {(['신입', '경력'] as ExperienceLevel[]).map((level) => (
+            <button
+              key={level}
+              type="button"
+              onClick={() => setExperienceLevel(level)}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+                experienceLevel === level
+                  ? 'bg-primary-600 text-white border-primary-600'
+                  : 'border-gray-300 text-gray-700 hover:border-primary-400'
+              }`}
+            >
+              {level}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 제출 버튼 */}

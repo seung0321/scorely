@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { AnalysisResult, JobCategory } from '@resumate/types'
+import { AnalysisResult, JobCategory, ExperienceLevel } from '@resumate/types'
 import FeedbackList from './FeedbackList'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 
@@ -32,9 +32,10 @@ interface ScorePanelProps {
   version: number
   previousScore?: number
   currentJobCategory: JobCategory
+  currentExperienceLevel: ExperienceLevel
   isLoading: boolean
   isSaving: boolean
-  onReanalyze: (jobCategory: JobCategory) => Promise<void>
+  onReanalyze: (jobCategory: JobCategory, experienceLevel: ExperienceLevel) => Promise<void>
 }
 
 const scoreLabels: Record<keyof AnalysisResult['scores'], string> = {
@@ -50,17 +51,19 @@ export default function ScorePanel({
   version,
   previousScore,
   currentJobCategory,
+  currentExperienceLevel,
   isLoading,
   isSaving,
   onReanalyze,
 }: ScorePanelProps) {
   const [selectedCategory, setSelectedCategory] = useState<JobCategory>(currentJobCategory)
+  const [selectedLevel, setSelectedLevel] = useState<ExperienceLevel>(currentExperienceLevel)
   const [isReanalyzing, setIsReanalyzing] = useState(false)
 
   const handleReanalyze = async () => {
     setIsReanalyzing(true)
     try {
-      await onReanalyze(selectedCategory)
+      await onReanalyze(selectedCategory, selectedLevel)
     } finally {
       setIsReanalyzing(false)
     }
@@ -145,6 +148,7 @@ export default function ScorePanel({
           <FeedbackList
             strengths={analysis.strengths}
             improvements={analysis.improvements}
+            penalties={analysis.penalties}
             oneLiner={analysis.oneLiner}
           />
         </div>
@@ -176,6 +180,22 @@ export default function ScorePanel({
               '재분석하기'
             )}
           </button>
+        </div>
+        <div className="flex gap-2">
+          {(['신입', '경력'] as ExperienceLevel[]).map((level) => (
+            <button
+              key={level}
+              type="button"
+              onClick={() => setSelectedLevel(level)}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                selectedLevel === level
+                  ? 'bg-primary-600 text-white border-primary-600'
+                  : 'border-gray-300 text-gray-600 hover:border-primary-400'
+              }`}
+            >
+              {level}
+            </button>
+          ))}
         </div>
         {isSaving && (
           <p className="text-xs text-gray-400 text-center">저장 중... 완료 후 재분석 가능합니다</p>

@@ -54,8 +54,8 @@ export function useSectionEditor(resumeId: string, initialSections: ResumeSectio
     (key: keyof ResumeSections, value: string | string[]) => {
       sectionsRef.current = { ...sectionsRef.current, [key]: value }
       if (timerRef.current) clearTimeout(timerRef.current)
+      setSaveStatus('saving')  // 즉시 saving 표시 → 재분석 버튼 비활성화
       timerRef.current = setTimeout(async () => {
-        setSaveStatus('saving')
         try {
           await saveSections(resumeId, sectionsRef.current)
           setSaveStatus('saved')
@@ -68,5 +68,5 @@ export function useSectionEditor(resumeId: string, initialSections: ResumeSectio
     [resumeId, saveSections],
   )
 
-  return { saveStatus, handleSectionChange }
+  return { saveStatus, handleSectionChange, sectionsRef }
 }
