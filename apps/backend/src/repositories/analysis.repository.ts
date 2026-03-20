@@ -1,6 +1,8 @@
-import { Analysis } from '@prisma/client'
+import { Analysis, PrismaClient } from '@prisma/client'
 import { prisma } from '../config/prisma'
 import { AppError } from '../middlewares/errorHandler'
+
+type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
 
 type CreateAnalysisData = {
   resumeId: string
@@ -24,10 +26,11 @@ type ScoreHistory = {
 }
 
 export const analysisRepository = {
-  async create(data: CreateAnalysisData): Promise<Analysis> {
+  async create(data: CreateAnalysisData, tx?: TransactionClient): Promise<Analysis> {
     try {
-      return await prisma.analysis.create({ data })
+      return await (tx ?? prisma).analysis.create({ data })
     } catch (err) {
+      console.error('[analysisRepository.create]', err)
       throw new AppError(500, 'DB 생성 오류', 'INTERNAL_ERROR')
     }
   },
@@ -36,6 +39,7 @@ export const analysisRepository = {
     try {
       return await prisma.analysis.findUnique({ where: { resumeId } })
     } catch (err) {
+      console.error('[analysisRepository.findByResumeId]', err)
       throw new AppError(500, 'DB 조회 오류', 'INTERNAL_ERROR')
     }
   },
@@ -64,6 +68,7 @@ export const analysisRepository = {
           jobCategory: r.jobCategory,
         }))
     } catch (err) {
+      console.error('[analysisRepository.findScoreHistoryByUserId]', err)
       throw new AppError(500, 'DB 조회 오류', 'INTERNAL_ERROR')
     }
   },
