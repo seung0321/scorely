@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { AnalysisResult, JobCategory, ResumeVersion, ResumeSections } from '@resumate/types'
+import { AnalysisResult, JobCategory, ExperienceLevel, ResumeVersion, ResumeSections } from '@resumate/types'
 import api from '@/lib/api'
 
 interface UploadResult {
@@ -23,10 +23,11 @@ interface ScoreHistoryItem {
 }
 
 export function useResume() {
-  const upload = useCallback(async (file: File, jobCategory: JobCategory): Promise<UploadResult> => {
+  const upload = useCallback(async (file: File, jobCategory: JobCategory, experienceLevel: ExperienceLevel): Promise<UploadResult> => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('jobCategory', jobCategory)
+    formData.append('experienceLevel', experienceLevel)
     const res = await api.post<{ success: true; data: UploadResult }>(
       '/api/resume/upload',
       formData,
@@ -50,10 +51,13 @@ export function useResume() {
   }, [])
 
   const reanalyze = useCallback(
-    async (resumeId: string, jobCategory?: JobCategory): Promise<ReanalyzeResult> => {
+    async (resumeId: string, jobCategory?: JobCategory, experienceLevel?: ExperienceLevel): Promise<ReanalyzeResult> => {
+      const body: { jobCategory?: JobCategory; experienceLevel?: ExperienceLevel } = {}
+      if (jobCategory) body.jobCategory = jobCategory
+      if (experienceLevel) body.experienceLevel = experienceLevel
       const res = await api.post<{ success: true; data: ReanalyzeResult }>(
         `/api/resume/${resumeId}/reanalyze`,
-        jobCategory ? { jobCategory } : {}
+        body,
       )
       return res.data.data
     },

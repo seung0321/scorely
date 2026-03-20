@@ -55,6 +55,7 @@ interface SectionBlockProps {
 
 function SectionBlock({ title, content, placeholder, onChange }: SectionBlockProps) {
   const editor = useTipTapEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Placeholder.configure({ placeholder: placeholder ?? '내용을 입력하세요...' }),
@@ -103,6 +104,7 @@ function FallbackEditor({
   }, [saveStatus, onSaveStatusChange])
 
   const editor = useTipTapEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Placeholder.configure({ placeholder: '이력서 내용을 입력하세요...' }),
@@ -167,7 +169,7 @@ function SectionedEditor({
   sections: ResumeSections
   onSaveStatusChange?: (status: SaveStatus) => void
 }) {
-  const { saveStatus, handleSectionChange } = useSectionEditor(resumeId, sections)
+  const { saveStatus, handleSectionChange, sectionsRef } = useSectionEditor(resumeId, sections)
 
   useEffect(() => {
     onSaveStatusChange?.(saveStatus)
@@ -175,11 +177,12 @@ function SectionedEditor({
 
   const handleProjectChange = useCallback(
     (index: number, value: string) => {
-      const updated = [...(sections.projects ?? [])]
+      // sections.projects(stale prop)가 아닌 sectionsRef.current.projects(최신값)를 사용
+      const updated = [...(sectionsRef.current.projects ?? [])]
       updated[index] = value
       handleSectionChange('projects', updated)
     },
-    [sections.projects, handleSectionChange],
+    [sectionsRef, handleSectionChange],
   )
 
   return (
