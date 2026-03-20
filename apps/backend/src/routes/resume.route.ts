@@ -1,29 +1,12 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { JobCategory, ExperienceLevel, ResumeSections } from '@resumate/types'
+import { JobCategory, ExperienceLevel, JOB_CATEGORIES, EXPERIENCE_LEVELS, ResumeSections } from '@resumate/types'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { resumeService } from '../services/resume.service'
 import { success } from '../utils/apiResponse'
 import { AppError } from '../middlewares/errorHandler'
 import { JwtPayload } from '../types/fastify'
 
-const JOB_CATEGORIES: [JobCategory, ...JobCategory[]] = [
-  'IT개발·데이터',
-  '디자인',
-  '마케팅·광고',
-  '경영·기획',
-  '영업·판매',
-  '회계·세무·재무',
-  '인사·노무',
-  '의료·제약',
-  '금융·보험',
-  '연구·R&D',
-  '교육',
-  '생산·제조',
-  '기타',
-]
-
-const EXPERIENCE_LEVELS = ['신입', '경력'] as const
 
 const saveTextSchema = z.object({
   editedText: z.string().min(1, '텍스트를 입력해주세요'),
@@ -113,6 +96,7 @@ const resumeVersionSchema = {
     jobCategory: { type: 'string' },
     experienceLevel: { type: 'string' },
     extractedText: { type: 'string' },
+    editedText: { type: 'string' },
     sections: resumeSectionsSchema,
     createdAt: { type: 'string' },
     analysis: analysisResultSchema,
@@ -164,7 +148,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
     const fileBuffer = Buffer.concat(chunks)
 
     const jobCategoryField = (data.fields['jobCategory'] as { value?: string } | undefined)?.value
-    if (!jobCategoryField || !(JOB_CATEGORIES as string[]).includes(jobCategoryField)) {
+    if (!jobCategoryField || !(JOB_CATEGORIES as readonly string[]).includes(jobCategoryField)) {
       throw new AppError(400, '올바른 직군을 선택해주세요', 'VALIDATION_ERROR')
     }
 
@@ -335,6 +319,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
               properties: {
                 analysis: analysisResultSchema,
                 version: { type: 'number' },
+                newResumeId: { type: 'string' },
               },
             },
           },
@@ -360,6 +345,39 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
 
     const result = await resumeService.reanalyze(resumeId, userId, parsed.data.jobCategory, parsed.data.experienceLevel)
     return reply.send(success(result, '재분석이 완료되었습니다'))
+  })
+
+  // DELETE /api/resume/:resumeId
+  app.delete('/:resumeId', {
+    schema: {
+      tags: ['Resume'],
+      summary: '이력서 삭제',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['resumeId'],
+        properties: {
+          resumeId: { type: 'string' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+          },
+        },
+        401: errorResponseSchema,
+        403: errorResponseSchema,
+        404: errorResponseSchema,
+      },
+    },
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    const { userId } = request.user as JwtPayload
+    const { resumeId } = request.params as { resumeId: string }
+    await resumeService.deleteResume(resumeId, userId)
+    return reply.send(success(null, '이력서가 삭제되었습니다'))
   })
 
   // GET /api/resume/history

@@ -9,6 +9,7 @@ import { useEditor, useSectionEditor, SaveStatus } from '@/hooks/useEditor'
 
 const SECTION_LABELS: Record<keyof ResumeSections, string> = {
   summary: '간략 소개',
+  coverLetter: '자기소개서',
   experience: '경력',
   education: '학력',
   training: '교육 이수',
@@ -21,7 +22,7 @@ const SECTION_LABELS: Record<keyof ResumeSections, string> = {
 
 const SECTION_ORDER: (keyof ResumeSections)[] = [
   'summary', 'experience', 'education', 'training', 'projects',
-  'skills', 'certifications', 'activities', 'awards',
+  'skills', 'certifications', 'activities', 'awards', 'coverLetter',
 ]
 
 const saveStatusLabel: Record<SaveStatus, string> = {
@@ -50,10 +51,11 @@ interface SectionBlockProps {
   title: string
   content: string
   placeholder?: string
+  excluded?: boolean
   onChange: (value: string) => void
 }
 
-function SectionBlock({ title, content, placeholder, onChange }: SectionBlockProps) {
+function SectionBlock({ title, content, placeholder, excluded, onChange }: SectionBlockProps) {
   const editor = useTipTapEditor({
     immediatelyRender: false,
     extensions: [
@@ -72,9 +74,14 @@ function SectionBlock({ title, content, placeholder, onChange }: SectionBlockPro
   })
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-3">
-      <div className="px-4 py-2 border-b border-gray-100 bg-gray-50 rounded-t-xl">
+    <div className={`bg-white rounded-xl border shadow-sm mb-3 ${excluded ? 'border-amber-200' : 'border-gray-100'}`}>
+      <div className={`px-4 py-2 border-b rounded-t-xl flex items-center gap-2 ${excluded ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}`}>
         <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
+        {excluded && (
+          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+            분석 제외
+          </span>
+        )}
       </div>
       <EditorContent editor={editor} />
     </div>
@@ -216,6 +223,7 @@ function SectionedEditor({
             key={key}
             title={SECTION_LABELS[key]}
             content={value}
+            excluded={key === 'coverLetter'}
             onChange={(val) => handleSectionChange(key, val)}
           />
         )

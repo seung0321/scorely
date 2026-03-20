@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { ResumeVersion } from '@resumate/types'
-import { useAuth } from '@/contexts/AuthContext'
+import { useRequireAuth } from '@/hooks/useRequireAuth'
 import { useResume } from '@/hooks/useResume'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import ErrorMessage from '@/components/common/ErrorMessage'
@@ -27,21 +26,17 @@ interface ScoreHistoryItem {
 }
 
 export default function HistoryPage() {
-  const { user, loading: authLoading } = useAuth()
-  const { getHistory, getScoreHistory } = useResume()
-  const router = useRouter()
+  const { isReady } = useRequireAuth()
+  const { getHistory, getScoreHistory, deleteResume } = useResume()
 
   const [versions, setVersions] = useState<ResumeVersion[]>([])
   const [scoreHistory, setScoreHistory] = useState<ScoreHistoryItem[]>([])
   const [pageLoading, setPageLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!authLoading && !user) router.replace('/login')
-  }, [user, authLoading, router])
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
-    if (!user) return
+    if (!isReady) return
     try {
       setPageLoading(true)
       const [historyData, scoreData] = await Promise.all([getHistory(), getScoreHistory()])
@@ -52,13 +47,26 @@ export default function HistoryPage() {
     } finally {
       setPageLoading(false)
     }
-  }, [user, getHistory, getScoreHistory])
+  }, [isReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  if (authLoading || pageLoading) {
+  const handleDelete = async (id: string) => {
+    if (!confirm('이 이력서를 삭제하시겠습니까? 복구할 수 없습니다.')) return
+    setDeletingId(id)
+    try {
+      await deleteResume(id)
+      await fetchData()
+    } catch {
+      setError('삭제에 실패했습니다.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  if (!isReady || pageLoading) {
     return (
       <div className="min-h-[calc(100vh-64px)] flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -163,12 +171,21 @@ export default function HistoryPage() {
                       </div>
 
                       {/* 버튼 */}
-                      <Link
-                        href={`/analysis/${v.id}`}
-                        className="border border-gray-300 hover:border-primary-400 text-gray-600 hover:text-primary-600 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
-                      >
-                        자세히 보기 →
-                      </Link>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Link
+                          href={`/analysis/${v.id}`}
+                          className="border border-gray-300 hover:border-primary-400 text-gray-600 hover:text-primary-600 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          자세히 보기 →
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(v.id)}
+                          disabled={deletingId === v.id}
+                          className="border border-red-200 hover:border-red-400 text-red-400 hover:text-red-600 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {deletingId === v.id ? '삭제 중...' : '삭제'}
+                        </button>
+                      </div>
                     </div>
                   )
                 })}

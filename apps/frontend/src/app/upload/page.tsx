@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { JobCategory, ExperienceLevel } from '@resumate/types'
-import { useAuth } from '@/contexts/AuthContext'
+import { useRequireAuth } from '@/hooks/useRequireAuth'
 import { useResume } from '@/hooks/useResume'
 import { getApiErrorMessage } from '@/contexts/AuthContext'
 import UploadDropzone from '@/components/resume/UploadDropzone'
@@ -11,15 +11,11 @@ import ErrorMessage from '@/components/common/ErrorMessage'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 
 export default function UploadPage() {
-  const { user, loading } = useAuth()
+  const { isReady } = useRequireAuth()
   const { upload } = useResume()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!loading && !user) router.replace('/login')
-  }, [user, loading, router])
 
   const handleUpload = async (file: File, jobCategory: JobCategory, experienceLevel: ExperienceLevel) => {
     setError(null)
@@ -33,15 +29,13 @@ export default function UploadPage() {
     }
   }
 
-  if (loading) {
+  if (!isReady) {
     return (
       <div className="min-h-[calc(100vh-64px)] flex items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     )
   }
-
-  if (!user) return null
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-gray-100 py-12 px-4">

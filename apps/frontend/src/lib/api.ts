@@ -23,7 +23,7 @@ api.interceptors.response.use(
       typeof window !== 'undefined'
     ) {
       removeToken()
-      window.location.href = '/login'
+      // useRequireAuth가 user=null 감지 후 /login으로 리디렉트 처리
     }
     return Promise.reject(error)
   }

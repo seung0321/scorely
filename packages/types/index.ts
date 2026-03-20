@@ -1,19 +1,23 @@
-export type JobCategory =
-  | 'IT개발·데이터'
-  | '디자인'
-  | '마케팅·광고'
-  | '경영·기획'
-  | '영업·판매'
-  | '회계·세무·재무'
-  | '인사·노무'
-  | '의료·제약'
-  | '금융·보험'
-  | '연구·R&D'
-  | '교육'
-  | '생산·제조'
-  | '기타'
+export const JOB_CATEGORIES = [
+  'IT개발·데이터',
+  '디자인',
+  '마케팅·광고',
+  '경영·기획',
+  '영업·판매',
+  '회계·세무·재무',
+  '인사·노무',
+  '의료·제약',
+  '금융·보험',
+  '연구·R&D',
+  '교육',
+  '생산·제조',
+  '기타',
+] as const
 
-export type ExperienceLevel = '신입' | '경력'
+export type JobCategory = (typeof JOB_CATEGORIES)[number]
+
+export const EXPERIENCE_LEVELS = ['신입', '경력'] as const
+export type ExperienceLevel = (typeof EXPERIENCE_LEVELS)[number]
 
 export interface ScoreDetail {
   expertise: number
@@ -46,6 +50,7 @@ export interface AnalysisResult {
 
 export interface ResumeSections {
   summary?: string
+  coverLetter?: string
   experience?: string
   education?: string
   training?: string
@@ -61,7 +66,8 @@ export interface ResumeVersion {
   version: number
   jobCategory: JobCategory
   experienceLevel: ExperienceLevel
-  extractedText: string      // 에디터에 표시할 텍스트
+  extractedText: string
+  editedText?: string
   sections: ResumeSections | null
   createdAt: string
   analysis: AnalysisResult | null

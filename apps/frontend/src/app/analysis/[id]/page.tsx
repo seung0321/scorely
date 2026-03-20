@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { AnalysisResult, JobCategory, ExperienceLevel, ResumeVersion } from '@resumate/types'
-import { useAuth } from '@/contexts/AuthContext'
+import { useRequireAuth } from '@/hooks/useRequireAuth'
 import { useResume } from '@/hooks/useResume'
 import { getApiErrorMessage } from '@/contexts/AuthContext'
 import ScorePanel from '@/components/analysis/ScorePanel'
@@ -24,7 +25,7 @@ const ResumeEditor = dynamic(() => import('@/components/editor/ResumeEditor'), {
 export default function AnalysisPage() {
   const params = useParams<{ id: string }>()
   const id = params.id
-  const { user, loading: authLoading } = useAuth()
+  const { isReady } = useRequireAuth()
   const { getDetail, reanalyze } = useResume()
   const router = useRouter()
 
@@ -37,16 +38,11 @@ export default function AnalysisPage() {
   const [editorSaveStatus, setEditorSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   useEffect(() => {
-    if (!authLoading && !user) router.replace('/login')
-  }, [user, authLoading, router])
-
-  useEffect(() => {
-    if (!user || !id) return
+    if (!isReady || !id) return
     const fetchResume = async () => {
       try {
         setPageLoading(true)
         const data = await getDetail(id)
-        console.log('[분석 페이지] resume.sections:', JSON.stringify(data.sections))
         setResume(data)
         setCurrentAnalysis(data.analysis)
         setCurrentVersion(data.version)
@@ -57,7 +53,7 @@ export default function AnalysisPage() {
       }
     }
     fetchResume()
-  }, [id, user, getDetail])
+  }, [id, isReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleReanalyze = useCallback(
     async (jobCategory: JobCategory, experienceLevel: ExperienceLevel) => {
@@ -68,14 +64,15 @@ export default function AnalysisPage() {
         setPreviousScore(prevScore)
         setCurrentAnalysis(result.analysis)
         setCurrentVersion(result.version)
+        router.replace(`/analysis/${result.newResumeId}`)
       } catch (err) {
         throw new Error(getApiErrorMessage(err))
       }
     },
-    [resume, currentAnalysis, reanalyze]
+    [resume, currentAnalysis] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
-  if (authLoading || pageLoading) {
+  if (!isReady || pageLoading) {
     return (
       <div className="min-h-[calc(100vh-64px)] flex items-center justify-center">
         <div className="text-center space-y-3">
@@ -131,7 +128,7 @@ export default function AnalysisPage() {
           <ResumeEditor
             resumeId={resume.id}
             sections={resume.sections ?? {}}
-            extractedText={resume.extractedText}
+            extractedText={resume.editedText ?? resume.extractedText}
             onSaveStatusChange={setEditorSaveStatus}
           />
         </div>
