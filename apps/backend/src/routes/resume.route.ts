@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { JobCategory, ResumeSections } from '@resumate/types'
+import { JobCategory, ExperienceLevel, ResumeSections } from '@resumate/types'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { resumeService } from '../services/resume.service'
 import { success } from '../utils/apiResponse'
@@ -23,12 +23,15 @@ const JOB_CATEGORIES: [JobCategory, ...JobCategory[]] = [
   '기타',
 ]
 
+const EXPERIENCE_LEVELS = ['신입', '경력'] as const
+
 const saveTextSchema = z.object({
   editedText: z.string().min(1, '텍스트를 입력해주세요'),
 })
 
 const reanalyzeSchema = z.object({
   jobCategory: z.enum(JOB_CATEGORIES).optional(),
+  experienceLevel: z.enum(EXPERIENCE_LEVELS).optional(),
 })
 
 const errorResponseSchema = {
@@ -71,6 +74,17 @@ const analysisResultSchema = {
         },
       },
     },
+    penalties: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          category: { type: 'string' },
+          reason: { type: 'string' },
+          deduction: { type: 'number' },
+        },
+      },
+    },
     oneLiner: { type: 'string' },
   },
 }
@@ -97,6 +111,7 @@ const resumeVersionSchema = {
     id: { type: 'string' },
     version: { type: 'number' },
     jobCategory: { type: 'string' },
+    experienceLevel: { type: 'string' },
     extractedText: { type: 'string' },
     sections: resumeSectionsSchema,
     createdAt: { type: 'string' },
@@ -153,6 +168,11 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
       throw new AppError(400, '올바른 직군을 선택해주세요', 'VALIDATION_ERROR')
     }
 
+    const experienceLevelField = (data.fields['experienceLevel'] as { value?: string } | undefined)?.value
+    if (!experienceLevelField || !(EXPERIENCE_LEVELS as readonly string[]).includes(experienceLevelField)) {
+      throw new AppError(400, '경력 수준을 선택해주세요 (신입/경력)', 'VALIDATION_ERROR')
+    }
+
     const result = await resumeService.uploadAndAnalyze(
       userId,
       fileBuffer,
@@ -160,6 +180,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
       fileBuffer.length,
       data.filename,
       jobCategoryField as JobCategory,
+      experienceLevelField as ExperienceLevel,
     )
 
     return reply.status(201).send(success(result, '이력서가 성공적으로 분석되었습니다'))
@@ -242,10 +263,12 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
           summary: { type: 'string' },
           experience: { type: 'string' },
           education: { type: 'string' },
+          training: { type: 'string' },
           skills: { type: 'string' },
           projects: { type: 'array', items: { type: 'string' } },
           certifications: { type: 'string' },
           activities: { type: 'string' },
+          awards: { type: 'string' },
         },
       },
       response: {
@@ -296,6 +319,10 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
             type: 'string',
             enum: JOB_CATEGORIES,
           },
+          experienceLevel: {
+            type: 'string',
+            enum: EXPERIENCE_LEVELS,
+          },
         },
       },
       response: {
@@ -331,7 +358,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
       )
     }
 
-    const result = await resumeService.reanalyze(resumeId, userId, parsed.data.jobCategory)
+    const result = await resumeService.reanalyze(resumeId, userId, parsed.data.jobCategory, parsed.data.experienceLevel)
     return reply.send(success(result, '재분석이 완료되었습니다'))
   })
 
