@@ -1,4 +1,4 @@
-import { JobCategory, ExperienceLevel, EXPERIENCE_LEVELS, AnalysisResult, ResumeVersion, ResumeSections } from '@resumate/types'
+import { JobCategory, AnalysisResult, ResumeVersion, ResumeSections } from '@resumate/types'
 import { z } from 'zod'
 import { resumeRepository, buildEditedTextFromSections } from '../repositories/resume.repository'
 import { analysisRepository } from '../repositories/analysis.repository'
@@ -50,8 +50,6 @@ function toAnalysisResult(analysis: Analysis): AnalysisResult {
   }
 }
 
-const VALID_EXPERIENCE_LEVELS: readonly ExperienceLevel[] = EXPERIENCE_LEVELS
-
 function toResumeVersion(resume: {
   id: string
   version: number
@@ -67,9 +65,7 @@ function toResumeVersion(resume: {
     id: resume.id,
     version: resume.version,
     jobCategory: resume.jobCategory as JobCategory,
-    experienceLevel: VALID_EXPERIENCE_LEVELS.includes(resume.experienceLevel as ExperienceLevel)
-      ? (resume.experienceLevel as ExperienceLevel)
-      : '신입',
+    experienceLevel: '신입',
     extractedText: resume.extractedText,
     editedText: resume.editedText,
     sections: (resume.sections as ResumeSections) ?? null,
@@ -86,7 +82,6 @@ export const resumeService = {
     fileSize: number,
     originalName: string,
     jobCategory: JobCategory,
-    experienceLevel: ExperienceLevel,
   ): Promise<{
     resumeId: string
     version: number
@@ -99,7 +94,7 @@ export const resumeService = {
     const s3Key = await uploadToS3(fileBuffer, userId, originalName)
 
     try {
-      const { extractedText, sections, analysis } = await extractTextAndAnalyze(fileBuffer, jobCategory, experienceLevel)
+      const { extractedText, sections, analysis } = await extractTextAndAnalyze(fileBuffer, jobCategory)
 
       const result = await prisma.$transaction(async (tx) => {
         const version = await resumeRepository.getNextVersion(userId, tx)
@@ -112,7 +107,7 @@ export const resumeService = {
           editedText: buildEditedTextFromSections(sections),
           sections: sections as Prisma.InputJsonValue,
           jobCategory,
-          experienceLevel,
+          experienceLevel: '신입' as const,
         }, tx)
 
         await analysisRepository.create({
@@ -172,7 +167,6 @@ export const resumeService = {
     resumeId: string,
     userId: string,
     jobCategory?: JobCategory,
-    experienceLevel?: ExperienceLevel,
   ): Promise<{ analysis: AnalysisResult; version: number; newResumeId: string }> {
     const existing = await resumeRepository.findById(resumeId)
 
@@ -185,18 +179,12 @@ export const resumeService = {
     }
 
     const targetCategory = (jobCategory ?? existing.jobCategory) as JobCategory
-    const targetLevel: ExperienceLevel =
-      experienceLevel ??
-      (VALID_EXPERIENCE_LEVELS.includes(existing.experienceLevel as ExperienceLevel)
-        ? (existing.experienceLevel as ExperienceLevel)
-        : '신입')
     // 재분석 시 sections는 전달하지 않음 — editedText가 유일한 진실의 원천
     // 유저가 텍스트를 수정/삭제했을 때 DB의 sections(최초 업로드 기준)가 잘못된 힌트를 주어
     // Gemini가 빈 내용에도 높은 점수를 줄 수 있는 문제 방지
     const analysis = await analyzeResume(
       existing.editedText,
       targetCategory,
-      targetLevel,
     )
 
     const MAX_RETRIES = 1
@@ -213,7 +201,7 @@ export const resumeService = {
             editedText: existing.editedText,
             sections: (existing.sections as Prisma.InputJsonValue) ?? null,
             jobCategory: targetCategory,
-            experienceLevel: targetLevel,
+            experienceLevel: '신입' as const,
           }, tx)
 
           await analysisRepository.create({

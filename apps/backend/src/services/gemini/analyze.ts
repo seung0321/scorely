@@ -1,9 +1,9 @@
 import { GoogleGenAI } from '@google/genai'
-import { JobCategory, ExperienceLevel, AnalysisResult, ResumeSections } from '@resumate/types'
+import { JobCategory, AnalysisResult, ResumeSections, RecommendableSectionType } from '@resumate/types'
 import { env } from '../../config/env'
 import { AppError } from '../../middlewares/errorHandler'
 import { ExtractResult } from './types'
-import { buildPrompt, buildExtractPrompt } from './prompt-builder'
+import { buildPrompt, buildExtractPrompt, buildSectionRecommendPrompt, RecommendContext } from './prompt-builder'
 import { parseAndValidate, parseExtractResponse } from './response-parser'
 
 const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY })
@@ -14,15 +14,15 @@ const RETRY_HINT = '\n\n이전 응답이 JSON 파싱에 실패했습니다. 반�
 export async function analyzeResume(
   resumeText: string,
   jobCategory: JobCategory,
-  experienceLevel: ExperienceLevel,
   sections?: ResumeSections,
 ): Promise<AnalysisResult> {
-  const prompt = buildPrompt(jobCategory, resumeText, experienceLevel, sections)
+  const prompt = buildPrompt(jobCategory, resumeText, sections)
 
   try {
     const result = await ai.models.generateContent({
       model: MODEL,
       contents: prompt,
+      config: { temperature: 0 },
     })
     const raw = result.text ?? ''
 
@@ -32,6 +32,7 @@ export async function analyzeResume(
       const retryResult = await ai.models.generateContent({
         model: MODEL,
         contents: prompt + RETRY_HINT,
+        config: { temperature: 0 },
       })
       const retryRaw = retryResult.text ?? ''
       try {
@@ -46,12 +47,47 @@ export async function analyzeResume(
   }
 }
 
+export async function recommendSection(
+  sectionType: RecommendableSectionType,
+  content: string,
+  jobCategory: JobCategory,
+  context?: RecommendContext,
+): Promise<string> {
+  const prompt = buildSectionRecommendPrompt(sectionType, content, jobCategory, context)
+
+  try {
+    const result = await ai.models.generateContent({
+      model: MODEL,
+      contents: prompt,
+      config: { temperature: 0 },
+    })
+    const text = result.text?.trim() ?? ''
+
+    if (!text) {
+      const retryResult = await ai.models.generateContent({
+        model: MODEL,
+        contents: prompt + RETRY_HINT,
+        config: { temperature: 0 },
+      })
+      const retryText = retryResult.text?.trim() ?? ''
+      if (!retryText) {
+        throw new AppError(500, 'AI 추천 텍스트 생성에 실패했습니다', 'AI_ERROR')
+      }
+      return retryText
+    }
+
+    return text
+  } catch (err) {
+    if (err instanceof AppError) throw err
+    throw new AppError(500, 'AI 섹션 추천 중 오류가 발생했습니다', 'AI_ERROR')
+  }
+}
+
 export async function extractTextAndAnalyze(
   pdfBuffer: Buffer,
   jobCategory: JobCategory,
-  experienceLevel: ExperienceLevel,
 ): Promise<ExtractResult> {
-  const prompt = buildExtractPrompt(jobCategory, experienceLevel)
+  const prompt = buildExtractPrompt(jobCategory)
   const pdfBase64 = pdfBuffer.toString('base64')
 
   const attemptExtract = async (hint = ''): Promise<ExtractResult> => {
@@ -66,6 +102,7 @@ export async function extractTextAndAnalyze(
         },
         { text: prompt + hint },
       ],
+      config: { temperature: 0 },
     })
     const raw = result.text ?? ''
     return parseExtractResponse(raw)

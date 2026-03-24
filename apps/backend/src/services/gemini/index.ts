@@ -1,1 +1,1 @@
-export { analyzeResume, extractTextAndAnalyze } from './analyze'
+export { analyzeResume, extractTextAndAnalyze, recommendSection } from './analyze'

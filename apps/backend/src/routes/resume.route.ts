@@ -1,12 +1,19 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { JobCategory, ExperienceLevel, JOB_CATEGORIES, EXPERIENCE_LEVELS, ResumeSections } from '@resumate/types'
+import { JobCategory, JOB_CATEGORIES, ResumeSections, RECOMMENDABLE_SECTION_TYPES } from '@resumate/types'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { resumeService } from '../services/resume.service'
+import { recommendSection } from '../services/gemini'
 import { success } from '../utils/apiResponse'
 import { AppError } from '../middlewares/errorHandler'
 import { JwtPayload } from '../types/fastify'
 
+
+const sectionRecommendSchema = z.object({
+  sectionType: z.enum(RECOMMENDABLE_SECTION_TYPES),
+  content: z.string().min(1, '내용을 입력해주세요'),
+  jobCategory: z.enum(JOB_CATEGORIES),
+})
 
 const saveTextSchema = z.object({
   editedText: z.string().min(1, '텍스트를 입력해주세요'),
@@ -14,7 +21,6 @@ const saveTextSchema = z.object({
 
 const reanalyzeSchema = z.object({
   jobCategory: z.enum(JOB_CATEGORIES).optional(),
-  experienceLevel: z.enum(EXPERIENCE_LEVELS).optional(),
 })
 
 const errorResponseSchema = {
@@ -152,11 +158,6 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
       throw new AppError(400, '올바른 직군을 선택해주세요', 'VALIDATION_ERROR')
     }
 
-    const experienceLevelField = (data.fields['experienceLevel'] as { value?: string } | undefined)?.value
-    if (!experienceLevelField || !(EXPERIENCE_LEVELS as readonly string[]).includes(experienceLevelField)) {
-      throw new AppError(400, '경력 수준을 선택해주세요 (신입/경력)', 'VALIDATION_ERROR')
-    }
-
     const result = await resumeService.uploadAndAnalyze(
       userId,
       fileBuffer,
@@ -164,7 +165,6 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
       fileBuffer.length,
       data.filename,
       jobCategoryField as JobCategory,
-      experienceLevelField as ExperienceLevel,
     )
 
     return reply.status(201).send(success(result, '이력서가 성공적으로 분석되었습니다'))
@@ -303,10 +303,6 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
             type: 'string',
             enum: JOB_CATEGORIES,
           },
-          experienceLevel: {
-            type: 'string',
-            enum: EXPERIENCE_LEVELS,
-          },
         },
       },
       response: {
@@ -343,7 +339,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
       )
     }
 
-    const result = await resumeService.reanalyze(resumeId, userId, parsed.data.jobCategory, parsed.data.experienceLevel)
+    const result = await resumeService.reanalyze(resumeId, userId, parsed.data.jobCategory)
     return reply.send(success(result, '재분석이 완료되었습니다'))
   })
 
@@ -405,6 +401,74 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
     const { userId } = request.user as JwtPayload
     const history = await resumeService.getHistory(userId)
     return reply.send(success(history))
+  })
+
+  // POST /api/resume/:resumeId/section-recommend
+  app.post('/:resumeId/section-recommend', {
+    schema: {
+      tags: ['Resume'],
+      summary: '섹션별 AI 추천 텍스트 생성',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['resumeId'],
+        properties: {
+          resumeId: { type: 'string' },
+        },
+      },
+      body: {
+        type: 'object',
+        required: ['sectionType', 'content', 'jobCategory'],
+        properties: {
+          sectionType: { type: 'string', enum: [...RECOMMENDABLE_SECTION_TYPES] },
+          content: { type: 'string' },
+          jobCategory: { type: 'string', enum: JOB_CATEGORIES },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                recommendedText: { type: 'string' },
+              },
+            },
+          },
+        },
+        400: errorResponseSchema,
+        401: errorResponseSchema,
+        403: errorResponseSchema,
+        404: errorResponseSchema,
+      },
+    },
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    const { userId } = request.user as JwtPayload
+    const { resumeId } = request.params as { resumeId: string }
+
+    const parsed = sectionRecommendSchema.safeParse(request.body)
+    if (!parsed.success) {
+      throw new AppError(
+        400,
+        parsed.error.errors[0]?.message ?? '입력값이 올바르지 않습니다',
+        'VALIDATION_ERROR',
+      )
+    }
+
+    const resume = await resumeService.getDetail(resumeId, userId)
+
+    const { sectionType, content, jobCategory } = parsed.data
+    const context = resume.analysis
+      ? {
+          improvements: resume.analysis.improvements,
+          penalties: resume.analysis.penalties,
+        }
+      : undefined
+    const recommendedText = await recommendSection(sectionType, content, jobCategory, context)
+    return reply.send(success({ recommendedText }))
   })
 
   // GET /api/resume/:resumeId

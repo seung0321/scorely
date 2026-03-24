@@ -1,6 +1,21 @@
 import { AnalysisResult, ScoreDetail, ResumeSections } from '@resumate/types'
 import { RawAnalysis, RawExtract, ExtractResult } from './types'
 
+/** 객체/배열 등 비문자열 값을 값만 추출하여 텍스트로 변환 (key 제거) */
+function flattenToString(val: unknown): string {
+  if (typeof val === 'string') return val
+  if (val == null) return ''
+  if (Array.isArray(val)) {
+    return val.map((item) => flattenToString(item)).join('\n')
+  }
+  if (typeof val === 'object') {
+    return Object.values(val as Record<string, unknown>)
+      .map((v) => flattenToString(v))
+      .join('\n')
+  }
+  return String(val)
+}
+
 export function calcTotalScore(scores: ScoreDetail): number {
   const values = [scores.expertise, scores.experience, scores.achievement, scores.communication, scores.structure]
   return Math.round(values.reduce((sum, s) => sum + s, 0) / values.length)
@@ -60,16 +75,21 @@ export function parseExtractResponse(raw: string): ExtractResult {
   ]
   const rawSections = parsed.sections ?? {}
   for (const key of STRING_SECTION_KEYS) {
-    if (Array.isArray(rawSections[key])) {
-      rawSections[key] = (rawSections[key] as string[]).join('\n\n')
+    const val = rawSections[key]
+    if (val != null && typeof val !== 'string') {
+      // 배열(요소가 객체일 수 있음) 또는 단일 객체 → 텍스트로 변환
+      rawSections[key] = flattenToString(val)
     }
   }
   if (Array.isArray(rawSections['projects'])) {
     rawSections['projects'] = (rawSections['projects'] as unknown[]).map((p) =>
-      typeof p === 'string' ? p : JSON.stringify(p),
+      typeof p === 'string' ? p : flattenToString(p),
     )
   } else if (typeof rawSections['projects'] === 'string') {
     rawSections['projects'] = [rawSections['projects'] as string]
+  } else if (rawSections['projects'] != null) {
+    // 단일 객체로 온 경우
+    rawSections['projects'] = [flattenToString(rawSections['projects'])]
   }
   const sections = rawSections as ResumeSections
 
