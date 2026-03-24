@@ -5,11 +5,12 @@ import { useParams, useRouter } from 'next/navigation'
 
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { AnalysisResult, JobCategory, ExperienceLevel, ResumeVersion } from '@resumate/types'
+import { AnalysisResult, JobCategory, ResumeVersion, RecommendableSectionType, RECOMMENDABLE_SECTION_TYPES } from '@resumate/types'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import { useResume } from '@/hooks/useResume'
 import { getApiErrorMessage } from '@/contexts/AuthContext'
-import ScorePanel from '@/components/analysis/ScorePanel'
+import ScoreDashboard from '@/components/analysis/ScoreDashboard'
+import RecommendPanel, { RecommendState } from '@/components/analysis/RecommendPanel'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import ErrorMessage from '@/components/common/ErrorMessage'
 
@@ -26,7 +27,7 @@ export default function AnalysisPage() {
   const params = useParams<{ id: string }>()
   const id = params.id
   const { isReady } = useRequireAuth()
-  const { getDetail, reanalyze } = useResume()
+  const { getDetail, reanalyze, sectionRecommend } = useResume()
   const router = useRouter()
 
   const [resume, setResume] = useState<ResumeVersion | null>(null)
@@ -36,6 +37,15 @@ export default function AnalysisPage() {
   const [pageLoading, setPageLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editorSaveStatus, setEditorSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+
+  const [recommend, setRecommend] = useState<RecommendState>({
+    sectionType: '',
+    status: 'idle',
+    recommendedText: '',
+    errorMessage: '',
+  })
+  const [activeRecommendSection, setActiveRecommendSection] = useState('')
+  const [sectionOverrides, setSectionOverrides] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!isReady || !id) return
@@ -56,11 +66,11 @@ export default function AnalysisPage() {
   }, [id, isReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleReanalyze = useCallback(
-    async (jobCategory: JobCategory, experienceLevel: ExperienceLevel) => {
+    async (jobCategory: JobCategory) => {
       if (!resume) return
       try {
         const prevScore = currentAnalysis?.totalScore
-        const result = await reanalyze(resume.id, jobCategory, experienceLevel)
+        const result = await reanalyze(resume.id, jobCategory)
         setPreviousScore(prevScore)
         setCurrentAnalysis(result.analysis)
         setCurrentVersion(result.version)
@@ -71,6 +81,37 @@ export default function AnalysisPage() {
     },
     [resume, currentAnalysis] // eslint-disable-line react-hooks/exhaustive-deps
   )
+
+  const handleSectionRecommend = useCallback(
+    async (sectionType: string, content: string) => {
+      if (!resume) return
+
+      // projects-0 → projects 로 변환 (API 타입 매핑)
+      const apiSectionType: RecommendableSectionType = sectionType.startsWith('projects-')
+        ? 'projects'
+        : sectionType as RecommendableSectionType
+
+      if (!(RECOMMENDABLE_SECTION_TYPES as readonly string[]).includes(apiSectionType)) return
+
+      setActiveRecommendSection(sectionType)
+      setRecommend({ sectionType, status: 'loading', recommendedText: '', errorMessage: '' })
+
+      try {
+        const result = await sectionRecommend(resume.id, apiSectionType, content, resume.jobCategory)
+        setRecommend({ sectionType, status: 'done', recommendedText: result.recommendedText, errorMessage: '' })
+      } catch (err) {
+        setRecommend({ sectionType, status: 'error', recommendedText: '', errorMessage: getApiErrorMessage(err) })
+      } finally {
+        setActiveRecommendSection('')
+      }
+    },
+    [resume, sectionRecommend],
+  )
+
+  const handleApplyRecommendation = useCallback((sectionType: string, text: string) => {
+    setSectionOverrides((prev) => ({ ...prev, [sectionType]: text }))
+    setRecommend({ sectionType: '', status: 'idle', recommendedText: '', errorMessage: '' })
+  }, [])
 
   if (!isReady || pageLoading) {
     return (
@@ -99,9 +140,9 @@ export default function AnalysisPage() {
   if (!resume) return null
 
   return (
-    <div className="h-[calc(100vh-64px)] flex flex-col bg-gray-100">
+    <div className="min-h-[calc(100vh-64px)] lg:h-[calc(100vh-64px)] flex flex-col bg-gray-100">
       {/* 헤더 */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
+      <div className="bg-white border-b border-gray-200 px-4 lg:px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <h1 className="text-base font-semibold text-gray-900">이력서 분석 결과</h1>
           <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full font-medium">
@@ -112,38 +153,43 @@ export default function AnalysisPage() {
           <span className="bg-gray-100 px-2 py-0.5 rounded-full text-xs">
             {resume.jobCategory}
           </span>
-          <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-medium">
-            {resume.experienceLevel}
-          </span>
           <span className="text-xs">
             {new Date(resume.createdAt).toLocaleDateString('ko-KR')}
           </span>
         </div>
       </div>
 
-      {/* 2컬럼 */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* 왼쪽: 에디터 */}
-        <div className="flex-1 overflow-y-auto p-4 min-w-0">
+      {/* 상단 대시보드 */}
+      <ScoreDashboard
+        analysis={currentAnalysis}
+        version={currentVersion}
+        previousScore={previousScore}
+        currentJobCategory={resume.jobCategory}
+        isLoading={false}
+        isSaving={editorSaveStatus === 'saving'}
+        onReanalyze={handleReanalyze}
+      />
+
+      {/* 에디터 + 추천 패널 */}
+      <div className="flex flex-col lg:flex-row flex-1 lg:overflow-hidden">
+        {/* 에디터 */}
+        <div className="flex-1 lg:overflow-y-auto p-4 min-w-0">
           <ResumeEditor
             resumeId={resume.id}
             sections={resume.sections ?? {}}
             extractedText={resume.editedText ?? resume.extractedText}
             onSaveStatusChange={setEditorSaveStatus}
+            activeRecommendSection={activeRecommendSection}
+            onSectionRecommend={handleSectionRecommend}
+            sectionOverrides={sectionOverrides}
           />
         </div>
 
-        {/* 오른쪽: 점수 패널 */}
-        <div className="w-80 xl:w-96 overflow-y-auto p-4 bg-gray-100 border-l border-gray-200 flex-shrink-0">
-          <ScorePanel
-            analysis={currentAnalysis}
-            version={currentVersion}
-            previousScore={previousScore}
-            currentJobCategory={resume.jobCategory}
-            currentExperienceLevel={resume.experienceLevel}
-            isLoading={false}
-            isSaving={editorSaveStatus === 'saving'}
-            onReanalyze={handleReanalyze}
+        {/* AI 추천 패널 */}
+        <div className="w-full lg:w-80 xl:w-96 flex-shrink-0 lg:overflow-hidden border-t lg:border-t-0 lg:border-l border-gray-200">
+          <RecommendPanel
+            state={recommend}
+            onApply={handleApplyRecommendation}
           />
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { JobCategory, ExperienceLevel } from '@resumate/types'
+import { JobCategory } from '@resumate/types'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import { useResume } from '@/hooks/useResume'
 import { getApiErrorMessage } from '@/contexts/AuthContext'
@@ -17,11 +17,11 @@ export default function UploadPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleUpload = async (file: File, jobCategory: JobCategory, experienceLevel: ExperienceLevel) => {
+  const handleUpload = async (file: File, jobCategory: JobCategory) => {
     setError(null)
     setIsLoading(true)
     try {
-      const result = await upload(file, jobCategory, experienceLevel)
+      const result = await upload(file, jobCategory)
       router.push(`/analysis/${result.resumeId}`)
     } catch (err) {
       setError(getApiErrorMessage(err))

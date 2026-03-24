@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { JobCategory, ExperienceLevel } from '@resumate/types'
+import { JobCategory } from '@resumate/types'
 
 const JOB_CATEGORIES: JobCategory[] = [
   'IT개발·데이터',
@@ -20,7 +20,7 @@ const JOB_CATEGORIES: JobCategory[] = [
 ]
 
 interface UploadDropzoneProps {
-  onUpload: (file: File, jobCategory: JobCategory, experienceLevel: ExperienceLevel) => Promise<void>
+  onUpload: (file: File, jobCategory: JobCategory) => Promise<void>
   isLoading: boolean
 }
 
@@ -28,7 +28,6 @@ export default function UploadDropzone({ onUpload, isLoading }: UploadDropzonePr
   const [isDragOver, setIsDragOver] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [jobCategory, setJobCategory] = useState<JobCategory | ''>('')
-  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel | ''>('')
   const [fileError, setFileError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -62,11 +61,11 @@ export default function UploadDropzone({ onUpload, isLoading }: UploadDropzonePr
   }
 
   const handleSubmit = async () => {
-    if (!selectedFile || !jobCategory || !experienceLevel) return
-    await onUpload(selectedFile, jobCategory, experienceLevel)
+    if (!selectedFile || !jobCategory) return
+    await onUpload(selectedFile, jobCategory)
   }
 
-  const canSubmit = selectedFile && jobCategory && experienceLevel && !isLoading
+  const canSubmit = selectedFile && jobCategory && !isLoading
 
   return (
     <div className="space-y-4">
@@ -76,7 +75,7 @@ export default function UploadDropzone({ onUpload, isLoading }: UploadDropzonePr
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${
+        className={`border-2 border-dashed rounded-xl p-6 sm:p-10 text-center cursor-pointer transition-colors ${
           isDragOver
             ? 'border-primary-600 bg-primary-50'
             : selectedFile
@@ -94,7 +93,7 @@ export default function UploadDropzone({ onUpload, isLoading }: UploadDropzonePr
         {selectedFile ? (
           <div className="flex flex-col items-center gap-2">
             <span className="text-3xl">✅</span>
-            <p className="text-sm font-medium text-green-700">{selectedFile.name}</p>
+            <p className="text-sm font-medium text-green-700 truncate max-w-[200px]">{selectedFile.name}</p>
             <p className="text-xs text-green-600">
               {(selectedFile.size / 1024 / 1024).toFixed(1)}MB
             </p>
@@ -105,7 +104,7 @@ export default function UploadDropzone({ onUpload, isLoading }: UploadDropzonePr
             <span className="text-4xl text-primary-400">☁</span>
             <p className="text-primary-700 font-medium">PDF 파일을 여기에 드래그하세요</p>
             <p className="text-gray-500 text-sm">또는</p>
-            <span className="border border-primary-600 text-primary-600 px-4 py-2 rounded-lg text-sm hover:bg-primary-50">
+            <span className="border border-primary-600 text-primary-600 px-4 py-2 rounded-lg text-sm hover:bg-primary-50 transition-colors font-medium">
               파일 선택하기
             </span>
             <p className="text-xs text-gray-400">PDF만 가능 · 최대 10MB</p>
@@ -130,27 +129,6 @@ export default function UploadDropzone({ onUpload, isLoading }: UploadDropzonePr
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
-      </div>
-
-      {/* 경력 수준 선택 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">경력 수준</label>
-        <div className="flex gap-2">
-          {(['신입', '경력'] as ExperienceLevel[]).map((level) => (
-            <button
-              key={level}
-              type="button"
-              onClick={() => setExperienceLevel(level)}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
-                experienceLevel === level
-                  ? 'bg-primary-600 text-white border-primary-600'
-                  : 'border-gray-300 text-gray-700 hover:border-primary-400'
-              }`}
-            >
-              {level}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* 제출 버튼 */}
