@@ -1,4 +1,4 @@
-import { AnalysisResult, JobCategory, ExperienceLevel, ResumeVersion, ResumeSections } from '@resumate/types'
+import { AnalysisResult, JobCategory, ResumeVersion, ResumeSections, SectionRecommendResult, RecommendableSectionType } from '@resumate/types'
 import api from '@/lib/api'
 
 interface UploadResult {
@@ -23,11 +23,11 @@ interface ScoreHistoryItem {
 }
 
 export function useResume() {
-  async function upload(file: File, jobCategory: JobCategory, experienceLevel: ExperienceLevel): Promise<UploadResult> {
+  async function upload(file: File, jobCategory: JobCategory): Promise<UploadResult> {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('jobCategory', jobCategory)
-    formData.append('experienceLevel', experienceLevel)
+    formData.append('experienceLevel', '신입')
     const res = await api.post<{ success: true; data: UploadResult }>(
       '/api/resume/upload',
       formData,
@@ -50,10 +50,9 @@ export function useResume() {
     await api.patch(`/api/resume/${resumeId}/text`, { editedText })
   }
 
-  async function reanalyze(resumeId: string, jobCategory?: JobCategory, experienceLevel?: ExperienceLevel): Promise<ReanalyzeResult> {
-    const body: { jobCategory?: JobCategory; experienceLevel?: ExperienceLevel } = {}
+  async function reanalyze(resumeId: string, jobCategory?: JobCategory): Promise<ReanalyzeResult> {
+    const body: { jobCategory?: JobCategory } = {}
     if (jobCategory) body.jobCategory = jobCategory
-    if (experienceLevel) body.experienceLevel = experienceLevel
     const res = await api.post<{ success: true; data: ReanalyzeResult }>(
       `/api/resume/${resumeId}/reanalyze`,
       body,
@@ -74,5 +73,18 @@ export function useResume() {
     await api.delete(`/api/resume/${id}`)
   }
 
-  return { upload, getHistory, getDetail, saveText, saveSections, reanalyze, getScoreHistory, deleteResume }
+  async function sectionRecommend(
+    resumeId: string,
+    sectionType: RecommendableSectionType,
+    content: string,
+    jobCategory: JobCategory,
+  ): Promise<SectionRecommendResult> {
+    const res = await api.post<{ success: true; data: SectionRecommendResult }>(
+      `/api/resume/${resumeId}/section-recommend`,
+      { sectionType, content, jobCategory },
+    )
+    return res.data.data
+  }
+
+  return { upload, getHistory, getDetail, saveText, saveSections, reanalyze, getScoreHistory, deleteResume, sectionRecommend }
 }

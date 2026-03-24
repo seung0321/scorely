@@ -6,24 +6,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import { ResumeSections } from '@resumate/types'
 import { useEditor, useSectionEditor, SaveStatus } from '@/hooks/useEditor'
-
-const SECTION_LABELS: Record<keyof ResumeSections, string> = {
-  summary: '간략 소개',
-  coverLetter: '자기소개서',
-  experience: '경력',
-  education: '학력',
-  training: '교육 이수',
-  skills: '스킬',
-  projects: '프로젝트',
-  certifications: '자격증',
-  activities: '대외활동',
-  awards: '수상',
-}
-
-const SECTION_ORDER: (keyof ResumeSections)[] = [
-  'summary', 'experience', 'education', 'training', 'projects',
-  'skills', 'certifications', 'activities', 'awards', 'coverLetter',
-]
+import { SECTION_LABELS, SECTION_ORDER, RECOMMENDABLE_SECTIONS } from '@/constants/sections'
 
 const saveStatusLabel: Record<SaveStatus, string> = {
   idle: '',
@@ -39,9 +22,20 @@ const saveStatusColor: Record<SaveStatus, string> = {
   error: 'text-red-500',
 }
 
-function textToHtml(text: string): string {
-  if (/<[a-z][\s\S]*>/i.test(text)) return text
-  return text
+function sectionValueToString(val: unknown): string {
+  if (!val) return ''
+  if (typeof val === 'string') return val
+  if (Array.isArray(val)) return val.map((v) => sectionValueToString(v)).join('\n\n')
+  if (typeof val === 'object') return Object.values(val as Record<string, unknown>).map((v) => sectionValueToString(v)).join('\n')
+  return String(val)
+}
+
+function textToHtml(text: unknown): string {
+  const str = sectionValueToString(text)
+  if (!str) return ''
+  // TipTap에서 저장된 HTML인 경우 (반드시 태그로 시작) 그대로 사용
+  if (str.trimStart().startsWith('<')) return str
+  return str
     .split('\n\n')
     .map((para) => `<p>${para.replace(/\n/g, '<br>')}</p>`)
     .join('')
@@ -52,10 +46,14 @@ interface SectionBlockProps {
   content: string
   placeholder?: string
   excluded?: boolean
+  showRecommendButton?: boolean
+  isRecommendLoading?: boolean
+  onRecommend?: (currentContent: string) => void
+  overrideContent?: string
   onChange: (value: string) => void
 }
 
-function SectionBlock({ title, content, placeholder, excluded, onChange }: SectionBlockProps) {
+function SectionBlock({ title, content, placeholder, excluded, showRecommendButton, isRecommendLoading, onRecommend, overrideContent, onChange }: SectionBlockProps) {
   const editor = useTipTapEditor({
     immediatelyRender: false,
     extensions: [
@@ -73,14 +71,32 @@ function SectionBlock({ title, content, placeholder, excluded, onChange }: Secti
     },
   })
 
+  useEffect(() => {
+    if (overrideContent && editor) {
+      editor.commands.setContent(textToHtml(overrideContent), true)
+    }
+  }, [overrideContent, editor])
+
   return (
     <div className={`bg-white rounded-xl border shadow-sm mb-3 ${excluded ? 'border-amber-200' : 'border-gray-100'}`}>
-      <div className={`px-4 py-2 border-b rounded-t-xl flex items-center gap-2 ${excluded ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}`}>
-        <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
-        {excluded && (
-          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
-            분석 제외
-          </span>
+      <div className={`px-4 py-2 border-b rounded-t-xl flex items-center justify-between gap-2 ${excluded ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}`}>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
+          {excluded && (
+            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+              분석 제외
+            </span>
+          )}
+        </div>
+        {showRecommendButton && !excluded && (
+          <button
+            type="button"
+            onClick={() => onRecommend?.(editor?.getText() ?? '')}
+            disabled={isRecommendLoading}
+            className="text-xs bg-primary-50 hover:bg-primary-100 text-primary-600 px-2.5 py-1 rounded-lg font-medium transition-colors disabled:opacity-50 whitespace-nowrap flex-shrink-0"
+          >
+            {isRecommendLoading ? '추천 중...' : 'AI 추천 받기'}
+          </button>
         )}
       </div>
       <EditorContent editor={editor} />
@@ -93,6 +109,9 @@ interface ResumeEditorProps {
   sections: ResumeSections
   extractedText?: string
   onSaveStatusChange?: (status: SaveStatus) => void
+  activeRecommendSection?: string
+  onSectionRecommend?: (sectionType: string, content: string) => void
+  sectionOverrides?: Record<string, string>
 }
 
 function FallbackEditor({
@@ -142,7 +161,7 @@ function FallbackEditor({
   )
 }
 
-export default function ResumeEditor({ resumeId, sections, extractedText, onSaveStatusChange }: ResumeEditorProps) {
+export default function ResumeEditor({ resumeId, sections, extractedText, onSaveStatusChange, activeRecommendSection, onSectionRecommend, sectionOverrides }: ResumeEditorProps) {
   const hasContent = SECTION_ORDER.some((key) =>
     key === 'projects' ? (sections.projects?.length ?? 0) > 0 : !!sections[key],
   )
@@ -164,17 +183,32 @@ export default function ResumeEditor({ resumeId, sections, extractedText, onSave
     )
   }
 
-  return <SectionedEditor resumeId={resumeId} sections={sections} onSaveStatusChange={onSaveStatusChange} />
+  return (
+    <SectionedEditor
+      resumeId={resumeId}
+      sections={sections}
+      onSaveStatusChange={onSaveStatusChange}
+      activeRecommendSection={activeRecommendSection}
+      onSectionRecommend={onSectionRecommend}
+      sectionOverrides={sectionOverrides}
+    />
+  )
 }
 
 function SectionedEditor({
   resumeId,
   sections,
   onSaveStatusChange,
+  activeRecommendSection,
+  onSectionRecommend,
+  sectionOverrides,
 }: {
   resumeId: string
   sections: ResumeSections
   onSaveStatusChange?: (status: SaveStatus) => void
+  activeRecommendSection?: string
+  onSectionRecommend?: (sectionType: string, content: string) => void
+  sectionOverrides?: Record<string, string>
 }) {
   const { saveStatus, handleSectionChange, sectionsRef } = useSectionEditor(resumeId, sections)
 
@@ -210,6 +244,10 @@ function SectionedEditor({
               title={`프로젝트${sections.projects!.length > 1 ? ` ${i + 1}` : ''}`}
               content={proj}
               placeholder="프로젝트 내용을 입력하세요..."
+              showRecommendButton={RECOMMENDABLE_SECTIONS.has('projects')}
+              isRecommendLoading={activeRecommendSection === `projects-${i}`}
+              onRecommend={(content) => onSectionRecommend?.(`projects-${i}`, content)}
+              overrideContent={sectionOverrides?.[`projects-${i}`]}
               onChange={(val) => handleProjectChange(i, val)}
             />
           ))
@@ -224,6 +262,10 @@ function SectionedEditor({
             title={SECTION_LABELS[key]}
             content={value}
             excluded={key === 'coverLetter'}
+            showRecommendButton={RECOMMENDABLE_SECTIONS.has(key)}
+            isRecommendLoading={activeRecommendSection === key}
+            onRecommend={(content) => onSectionRecommend?.(key, content)}
+            overrideContent={sectionOverrides?.[key]}
             onChange={(val) => handleSectionChange(key, val)}
           />
         )

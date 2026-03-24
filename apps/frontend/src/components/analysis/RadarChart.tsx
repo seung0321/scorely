@@ -42,6 +42,7 @@ export default function RadarChart({ scores }: RadarChartProps) {
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false,
     scales: {
       r: {
         min: 0,
@@ -55,5 +56,9 @@ export default function RadarChart({ scores }: RadarChartProps) {
     },
   }
 
-  return <Radar data={data} options={options} />
+  return (
+    <div className="h-full w-full">
+      <Radar data={data} options={options} />
+    </div>
+  )
 }
