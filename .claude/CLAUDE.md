@@ -22,8 +22,8 @@ resumate/
 - Node.js + Fastify (Express 아님)
 - TypeScript strict 모드
 - Prisma ORM + PostgreSQL
-- JWT + bcrypt 인증
-- Google Gemini 1.5 Flash API
+- JWT + bcryptjs 인증
+- Google Gemini 2.5 Flash API (@google/genai)
 - AWS S3 (PDF 저장)
 - zod (환경변수 및 요청 검증)
 - pnpm
@@ -48,7 +48,8 @@ resumate/
 1. PDF 업로드 → S3 저장
 2. Gemini가 PDF를 base64로 받아 텍스트 추출 + 분석 동시 처리
 3. extractedText = editedText = 추출된 텍스트로 DB 저장
-4. 분석 결과(scores, strengths, improvements, oneLiner) DB 저장
+4. 분석 결과(scores, strengths, improvements, oneLiner, penalties) DB 저장
+5. 섹션별 파싱 결과(sections) DB 저장 (summary, experience, education, training, skills, projects, certifications, activities, awards, coverLetter)
 
 ### 재분석 흐름
 1. TipTap 에디터에서 텍스트 수정
@@ -60,6 +61,14 @@ resumate/
 - Resume.extractedText: PDF 최초 추출 원본
 - Resume.editedText: 사용자 수정 텍스트 (재분석에 사용)
 - Resume.version: 버전 번호 (재분석마다 증가)
+- Resume.sections: 섹션별 파싱된 텍스트 (JSON)
+- Resume.experienceLevel: 신입/경력 구분
+- Analysis.expertiseScore: 전문성 점수
+- Analysis.experienceScore: 경험 점수
+- Analysis.achievementScore: 성과 점수
+- Analysis.communicationScore: 커뮤니케이션 점수
+- Analysis.structureScore: 구조 점수
+- Analysis.penalties: 감점 항목 (category, reason, deduction)
 
 ## 코드 규칙
 
@@ -92,13 +101,18 @@ POST   /api/auth/register
 POST   /api/auth/login
 GET    /api/auth/me
 
-POST   /api/resume/upload          # PDF 업로드 + 최초 분석
-PATCH  /api/resume/:id/text        # editedText 자동 저장
-POST   /api/resume/:id/reanalyze   # 재분석 (새 버전 생성)
-GET    /api/resume/history         # 전체 버전 목록
-GET    /api/resume/:id             # 특정 버전 상세
+POST   /api/resume/upload              # PDF 업로드 + 최초 분석
+PATCH  /api/resume/:id/text           # editedText 자동 저장
+PATCH  /api/resume/:id/sections       # 섹션별 텍스트 저장
+POST   /api/resume/:id/reanalyze      # 재분석 (새 버전 생성)
+GET    /api/resume/history            # 전체 버전 목록
+GET    /api/resume/:id                # 특정 버전 상세
+DELETE /api/resume/:id                # 이력서 삭제
 
-GET    /api/analysis/history       # 점수 히스토리 (차트용)
+GET    /api/analysis/history          # 점수 히스토리 (차트용)
+
+GET    /health                        # 서버 상태 확인
+GET    /docs                          # Swagger UI
 
 ## 환경변수 목록
 ### 백엔드 (.env)
@@ -117,17 +131,20 @@ FRONTEND_URL=http://localhost:3001
 NEXT_PUBLIC_API_URL=http://localhost:3000
 
 ## 직군 목록 (JobCategory)
-'백엔드 개발자' | '프론트엔드 개발자' | '기획자' | '마케터' | '디자이너' | '데이터 분석가'
+'IT개발·데이터' | '디자인' | '마케팅·광고' | '경영·기획' | '영업·판매' |
+'회계·세무·재무' | '인사·노무' | '의료·제약' | '금융·보험' | '연구·R&D' |
+'교육' | '생산·제조' | '기타'
 
 ## 주의사항
 - pnpm 사용 (npm, yarn 사용 금지)
 - Fastify 사용 (Express 사용 금지)
 - .env 파일 절대 커밋 금지
 - AWS SDK v3 사용 (@aws-sdk/client-s3)
-- Gemini model: "gemini-1.5-flash"
+- Gemini model: "gemini-2.5-flash"
+- Gemini 패키지: @google/genai
 - JWT 만료: 7일
 - PDF 최대 크기: 10MB
-- bcrypt saltRounds: 10
+- bcryptjs saltRounds: 10
 
 ## PR 문서 작성 규칙
 사용자가 "PR 작성해줘" 또는 "PR 문서 만들어줘"라고 하면 아래 절차를 자동으로 따른다.
