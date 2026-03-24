@@ -16,8 +16,8 @@ export const JOB_CATEGORIES = [
 
 export type JobCategory = (typeof JOB_CATEGORIES)[number]
 
-export const EXPERIENCE_LEVELS = ['신입', '경력'] as const
-export type ExperienceLevel = (typeof EXPERIENCE_LEVELS)[number]
+export const EXPERIENCE_LEVELS = ['신입'] as const
+export type ExperienceLevel = '신입'
 
 export interface ScoreDetail {
   expertise: number
@@ -77,6 +77,19 @@ export interface User {
   id: string
   email: string
   name: string
+}
+
+export const RECOMMENDABLE_SECTION_TYPES = ['summary', 'experience', 'projects', 'awards', 'education', 'activities'] as const
+export type RecommendableSectionType = (typeof RECOMMENDABLE_SECTION_TYPES)[number]
+
+export interface SectionRecommendRequest {
+  sectionType: RecommendableSectionType
+  content: string
+  jobCategory: JobCategory
+}
+
+export interface SectionRecommendResult {
+  recommendedText: string
 }
 
 export interface ApiSuccess<T> {

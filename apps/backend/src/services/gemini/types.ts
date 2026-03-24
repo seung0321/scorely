@@ -4,9 +4,7 @@ export type CategoryGuideEntry = {
   criteria: string[]
   keywords: string[]
   newGradFocus: string
-  experiencedFocus: string
   newGradScoreGuide: string
-  experiencedScoreGuide: string
 }
 
 export type ScoreCalculationEntry = Record<string, number>

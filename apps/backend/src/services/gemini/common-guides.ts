@@ -1,4 +1,4 @@
-import { JobCategory, ExperienceLevel } from '@resumate/types'
+import { JobCategory } from '@resumate/types'
 
 export const CATEGORY_PENALTY: Partial<Record<JobCategory, string>> = {
   'IT개발·데이터': `[IT개발·데이터 전용]
@@ -37,11 +37,7 @@ export function getCategoryPenaltyGuide(jobCategory: JobCategory): string {
 ${specific}`
 }
 
-export function getCommonScoreGuide(experienceLevel: ExperienceLevel): string {
-  const levelSpecific = experienceLevel === '신입'
-    ? '□ 팀 프로젝트에서 의견 조율 경험 서술:  Y → +15 / N → +0'
-    : '□ 이해관계자(PM/클라이언트) 소통 경험:  Y → +15 / N → +0'
-
+export function getCommonScoreGuide(): string {
   return `
 ■ communication (협업/커뮤니케이션, 최대 100점)
 [공통]
@@ -54,9 +50,9 @@ export function getCommonScoreGuide(experienceLevel: ExperienceLevel): string {
   (개발자↔기획자, 디자이너↔개발자 등)
 □ 커뮤니케이션 도구/방식 언급:          Y → +10 / N → +0
   (Slack, Notion, 회의, 코드리뷰 등)
-[${experienceLevel} 전용]
-${levelSpecific}
-최대(${experienceLevel}): 25+35+15+10+15 = 100점
+[신입 전용]
+□ 팀 프로젝트에서 의견 조율 경험 서술:  Y → +15 / N → +0
+최대(신입): 25+35+15+10+15 = 100점
 
 ■ structure (이력서 구성/가독성, 최대 100점)
 [공통 - 신입/경력 모두 동일]
