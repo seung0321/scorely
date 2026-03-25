@@ -73,7 +73,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       },
     },
   }, async () => {
-    return { status: 'ok!' }
+    return { status: 'ok!!' }
   })
 
   await app.register(authRoutes, { prefix: '/api/auth' })
