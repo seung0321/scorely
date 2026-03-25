@@ -1,4 +1,4 @@
-const TOKEN_KEY = 'resumate_token'
+const TOKEN_KEY = 'scorely_token'
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null

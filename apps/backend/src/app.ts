@@ -33,7 +33,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(swagger, {
     openapi: {
       info: {
-        title: 'Resumate API',
+        title: 'Scorely API',
         description: 'AI 기반 이력서 분석 서비스 API',
         version: '1.0.0',
       },

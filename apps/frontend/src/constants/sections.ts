@@ -1,4 +1,4 @@
-import { ResumeSections } from '@resumate/types'
+import { ResumeSections } from '@scorely/types'
 
 export const SECTION_LABELS: Record<keyof ResumeSections, string> = {
   summary: '간략 소개',

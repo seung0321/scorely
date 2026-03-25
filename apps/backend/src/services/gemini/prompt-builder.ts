@@ -1,4 +1,4 @@
-import { JobCategory, ResumeSections, RecommendableSectionType, Improvement, Penalty } from '@resumate/types'
+import { JobCategory, ResumeSections, RecommendableSectionType, Improvement, Penalty } from '@scorely/types'
 import { CATEGORY_GUIDE } from './category-guides'
 import { getCommonScoreGuide, getCategoryPenaltyGuide } from './common-guides'
 

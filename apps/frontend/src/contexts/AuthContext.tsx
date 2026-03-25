@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { User } from '@resumate/types'
+import { User } from '@scorely/types'
 import api from '@/lib/api'
 import { getToken, removeToken, setToken } from '@/lib/auth'
 import axios from 'axios'

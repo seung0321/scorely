@@ -29,7 +29,7 @@ allowed-tools: Bash(git log:*), Bash(git diff:*), Bash(git status:*)
 
 ---
 
-- 상위 페이지 제목: "AI 이력서 분석 - RESUMATE"
+- 상위 페이지 제목: "AI 이력서 분석 - SCORELY"
 - 새 페이지 제목: "YYYY-MM-DD 작업 내용 (핵심 작업 한 줄 요약)"
   예시: "2026-03-18 작업 내용 (Gemini 프롬프트 강화 및 ExperienceLevel 추가)"
 

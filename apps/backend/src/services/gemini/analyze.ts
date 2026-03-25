@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai'
-import { JobCategory, AnalysisResult, ResumeSections, RecommendableSectionType } from '@resumate/types'
+import { JobCategory, AnalysisResult, ResumeSections, RecommendableSectionType } from '@scorely/types'
 import { env } from '../../config/env'
 import { AppError } from '../../middlewares/errorHandler'
 import { ExtractResult } from './types'

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { ResumeVersion } from '@resumate/types'
+import { ResumeVersion } from '@scorely/types'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import { useResume } from '@/hooks/useResume'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
@@ -196,7 +196,7 @@ export default function HistoryPage() {
 
         {/* 푸터 */}
         <p className="text-center text-xs text-gray-400 pb-4">
-          © 2025 Resumate AI Resume Service. All rights reserved.
+          © 2025 Scorely AI Resume Service. All rights reserved.
         </p>
       </div>
     </div>

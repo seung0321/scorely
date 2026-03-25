@@ -1,7 +1,7 @@
 import { Resume, Analysis, Prisma, PrismaClient } from '@prisma/client'
 import { prisma } from '../config/prisma'
 import { AppError } from '../middlewares/errorHandler'
-import { ResumeSections } from '@resumate/types'
+import { ResumeSections } from '@scorely/types'
 
 type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== Resumate EC2 Setup ==="
+echo "=== Scorely EC2 Setup ==="
 
 # Node.js 20 LTS
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
@@ -18,11 +18,11 @@ pm2 startup
 sudo apt-get install -y nginx
 
 # 앱 디렉토리
-mkdir -p /home/ubuntu/resumate/apps/backend/logs
+mkdir -p /home/ubuntu/scorely/apps/backend/logs
 
 # Nginx 설정 복사
-sudo cp /home/ubuntu/resumate/apps/backend/nginx.conf /etc/nginx/sites-available/resumate
-sudo ln -sf /etc/nginx/sites-available/resumate /etc/nginx/sites-enabled/
+sudo cp /home/ubuntu/scorely/apps/backend/nginx.conf /etc/nginx/sites-available/scorely
+sudo ln -sf /etc/nginx/sites-available/scorely /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 

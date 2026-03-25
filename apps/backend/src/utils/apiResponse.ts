@@ -1,4 +1,4 @@
-import { ApiSuccess } from '@resumate/types'
+import { ApiSuccess } from '@scorely/types'
 
 export function success<T>(data: T, message?: string): ApiSuccess<T> {
   return {
