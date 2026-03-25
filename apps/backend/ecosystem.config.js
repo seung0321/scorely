@@ -1,10 +1,10 @@
 module.exports = {
   apps: [
     {
-      name: 'resumate-backend',
+      name: 'scorely-backend',
       script: 'dist/server.js',
-      instances: 'max',
-      exec_mode: 'cluster',
+      instances: 1,
+      exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
