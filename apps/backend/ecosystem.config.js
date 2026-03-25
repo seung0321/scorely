@@ -3,6 +3,7 @@ module.exports = {
     {
       name: 'scorely-backend',
       script: 'dist/server.js',
+      cwd: '/home/ubuntu/scorely/apps/backend',
       instances: 1,
       exec_mode: 'fork',
       env: {
