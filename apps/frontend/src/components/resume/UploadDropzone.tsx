@@ -75,7 +75,7 @@ export default function UploadDropzone({ onUpload, isLoading }: UploadDropzonePr
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${
+        className={`border-2 border-dashed rounded-xl p-6 sm:p-10 text-center cursor-pointer transition-colors ${
           isDragOver
             ? 'border-primary-600 bg-primary-50'
             : selectedFile
@@ -93,7 +93,7 @@ export default function UploadDropzone({ onUpload, isLoading }: UploadDropzonePr
         {selectedFile ? (
           <div className="flex flex-col items-center gap-2">
             <span className="text-3xl">✅</span>
-            <p className="text-sm font-medium text-green-700">{selectedFile.name}</p>
+            <p className="text-sm font-medium text-green-700 truncate max-w-[200px]">{selectedFile.name}</p>
             <p className="text-xs text-green-600">
               {(selectedFile.size / 1024 / 1024).toFixed(1)}MB
             </p>
@@ -104,7 +104,7 @@ export default function UploadDropzone({ onUpload, isLoading }: UploadDropzonePr
             <span className="text-4xl text-primary-400">☁</span>
             <p className="text-primary-700 font-medium">PDF 파일을 여기에 드래그하세요</p>
             <p className="text-gray-500 text-sm">또는</p>
-            <span className="border border-primary-600 text-primary-600 px-4 py-2 rounded-lg text-sm hover:bg-primary-50">
+            <span className="border border-primary-600 text-primary-600 px-4 py-2 rounded-lg text-sm hover:bg-primary-50 transition-colors font-medium">
               파일 선택하기
             </span>
             <p className="text-xs text-gray-400">PDF만 가능 · 최대 10MB</p>

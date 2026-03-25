@@ -14,7 +14,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: true })
 
   await app.register(cors, {
-    origin: env.FRONTEND_URL,
+    origin: env.FRONTEND_URL.includes(',')
+      ? env.FRONTEND_URL.split(',').map((s) => s.trim())
+      : env.FRONTEND_URL,
     credentials: true,
   })
 

@@ -1,27 +1,19 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { JobCategory } from '@resumate/types'
+import { JobCategory, JOB_CATEGORIES, ResumeSections, RECOMMENDABLE_SECTION_TYPES } from '@resumate/types'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { resumeService } from '../services/resume.service'
+import { recommendSection } from '../services/gemini'
 import { success } from '../utils/apiResponse'
 import { AppError } from '../middlewares/errorHandler'
 import { JwtPayload } from '../types/fastify'
 
-const JOB_CATEGORIES: [JobCategory, ...JobCategory[]] = [
-  'IT개발·데이터',
-  '디자인',
-  '마케팅·광고',
-  '경영·기획',
-  '영업·판매',
-  '회계·세무·재무',
-  '인사·노무',
-  '의료·제약',
-  '금융·보험',
-  '연구·R&D',
-  '교육',
-  '생산·제조',
-  '기타',
-]
+
+const sectionRecommendSchema = z.object({
+  sectionType: z.enum(RECOMMENDABLE_SECTION_TYPES),
+  content: z.string().min(1, '내용을 입력해주세요'),
+  jobCategory: z.enum(JOB_CATEGORIES),
+})
 
 const saveTextSchema = z.object({
   editedText: z.string().min(1, '텍스트를 입력해주세요'),
@@ -71,7 +63,34 @@ const analysisResultSchema = {
         },
       },
     },
+    penalties: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          category: { type: 'string' },
+          reason: { type: 'string' },
+          deduction: { type: 'number' },
+        },
+      },
+    },
     oneLiner: { type: 'string' },
+  },
+}
+
+const resumeSectionsSchema = {
+  type: 'object',
+  nullable: true,
+  properties: {
+    summary: { type: 'string' },
+    experience: { type: 'string' },
+    education: { type: 'string' },
+    training: { type: 'string' },
+    skills: { type: 'string' },
+    projects: { type: 'array', items: { type: 'string' } },
+    certifications: { type: 'string' },
+    activities: { type: 'string' },
+    awards: { type: 'string' },
   },
 }
 
@@ -81,7 +100,10 @@ const resumeVersionSchema = {
     id: { type: 'string' },
     version: { type: 'number' },
     jobCategory: { type: 'string' },
+    experienceLevel: { type: 'string' },
     extractedText: { type: 'string' },
+    editedText: { type: 'string' },
+    sections: resumeSectionsSchema,
     createdAt: { type: 'string' },
     analysis: analysisResultSchema,
   },
@@ -105,6 +127,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
                 resumeId: { type: 'string' },
                 version: { type: 'number' },
                 extractedText: { type: 'string' },
+                sections: resumeSectionsSchema,
                 analysis: analysisResultSchema,
               },
             },
@@ -131,7 +154,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
     const fileBuffer = Buffer.concat(chunks)
 
     const jobCategoryField = (data.fields['jobCategory'] as { value?: string } | undefined)?.value
-    if (!jobCategoryField || !(JOB_CATEGORIES as string[]).includes(jobCategoryField)) {
+    if (!jobCategoryField || !(JOB_CATEGORIES as readonly string[]).includes(jobCategoryField)) {
       throw new AppError(400, '올바른 직군을 선택해주세요', 'VALIDATION_ERROR')
     }
 
@@ -205,6 +228,61 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
     return reply.send(success(result))
   })
 
+  // PATCH /api/resume/:resumeId/sections
+  app.patch('/:resumeId/sections', {
+    schema: {
+      tags: ['Resume'],
+      summary: '이력서 섹션 저장',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['resumeId'],
+        properties: {
+          resumeId: { type: 'string' },
+        },
+      },
+      body: {
+        type: 'object',
+        properties: {
+          summary: { type: 'string' },
+          experience: { type: 'string' },
+          education: { type: 'string' },
+          training: { type: 'string' },
+          skills: { type: 'string' },
+          projects: { type: 'array', items: { type: 'string' } },
+          certifications: { type: 'string' },
+          activities: { type: 'string' },
+          awards: { type: 'string' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                resumeId: { type: 'string' },
+                sections: { type: 'object' },
+              },
+            },
+          },
+        },
+        401: errorResponseSchema,
+        403: errorResponseSchema,
+        404: errorResponseSchema,
+      },
+    },
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    const { userId } = request.user as JwtPayload
+    const { resumeId } = request.params as { resumeId: string }
+    const sections = request.body as ResumeSections
+    const result = await resumeService.saveSections(resumeId, userId, sections)
+    return reply.send(success(result))
+  })
+
   // POST /api/resume/:resumeId/reanalyze
   app.post('/:resumeId/reanalyze', {
     schema: {
@@ -237,6 +315,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
               properties: {
                 analysis: analysisResultSchema,
                 version: { type: 'number' },
+                newResumeId: { type: 'string' },
               },
             },
           },
@@ -264,6 +343,39 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
     return reply.send(success(result, '재분석이 완료되었습니다'))
   })
 
+  // DELETE /api/resume/:resumeId
+  app.delete('/:resumeId', {
+    schema: {
+      tags: ['Resume'],
+      summary: '이력서 삭제',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['resumeId'],
+        properties: {
+          resumeId: { type: 'string' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+          },
+        },
+        401: errorResponseSchema,
+        403: errorResponseSchema,
+        404: errorResponseSchema,
+      },
+    },
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    const { userId } = request.user as JwtPayload
+    const { resumeId } = request.params as { resumeId: string }
+    await resumeService.deleteResume(resumeId, userId)
+    return reply.send(success(null, '이력서가 삭제되었습니다'))
+  })
+
   // GET /api/resume/history
   app.get('/history', {
     schema: {
@@ -289,6 +401,74 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
     const { userId } = request.user as JwtPayload
     const history = await resumeService.getHistory(userId)
     return reply.send(success(history))
+  })
+
+  // POST /api/resume/:resumeId/section-recommend
+  app.post('/:resumeId/section-recommend', {
+    schema: {
+      tags: ['Resume'],
+      summary: '섹션별 AI 추천 텍스트 생성',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['resumeId'],
+        properties: {
+          resumeId: { type: 'string' },
+        },
+      },
+      body: {
+        type: 'object',
+        required: ['sectionType', 'content', 'jobCategory'],
+        properties: {
+          sectionType: { type: 'string', enum: [...RECOMMENDABLE_SECTION_TYPES] },
+          content: { type: 'string' },
+          jobCategory: { type: 'string', enum: JOB_CATEGORIES },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                recommendedText: { type: 'string' },
+              },
+            },
+          },
+        },
+        400: errorResponseSchema,
+        401: errorResponseSchema,
+        403: errorResponseSchema,
+        404: errorResponseSchema,
+      },
+    },
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    const { userId } = request.user as JwtPayload
+    const { resumeId } = request.params as { resumeId: string }
+
+    const parsed = sectionRecommendSchema.safeParse(request.body)
+    if (!parsed.success) {
+      throw new AppError(
+        400,
+        parsed.error.errors[0]?.message ?? '입력값이 올바르지 않습니다',
+        'VALIDATION_ERROR',
+      )
+    }
+
+    const resume = await resumeService.getDetail(resumeId, userId)
+
+    const { sectionType, content, jobCategory } = parsed.data
+    const context = resume.analysis
+      ? {
+          improvements: resume.analysis.improvements,
+          penalties: resume.analysis.penalties,
+        }
+      : undefined
+    const recommendedText = await recommendSection(sectionType, content, jobCategory, context)
+    return reply.send(success({ recommendedText }))
   })
 
   // GET /api/resume/:resumeId

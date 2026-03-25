@@ -8,7 +8,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner'
 
 const RadarChart = dynamic(() => import('./RadarChart'), {
   ssr: false,
-  loading: () => <div className="h-48 flex items-center justify-center"><LoadingSpinner /></div>,
+  loading: () => <div className="h-64 flex items-center justify-center"><LoadingSpinner /></div>,
 })
 
 const JOB_CATEGORIES: JobCategory[] = [
@@ -56,6 +56,7 @@ export default function ScorePanel({
 }: ScorePanelProps) {
   const [selectedCategory, setSelectedCategory] = useState<JobCategory>(currentJobCategory)
   const [isReanalyzing, setIsReanalyzing] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   const handleReanalyze = async () => {
     setIsReanalyzing(true)
@@ -73,9 +74,20 @@ export default function ScorePanel({
 
   return (
     <div className="space-y-4">
-      {/* 종합 점수 */}
+      {/* 종합 점수 + 접기 버튼 */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
-        <p className="text-xs text-gray-500 mb-1">종합 점수</p>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs text-gray-500">종합 점수</p>
+          {analysis && (
+            <button
+              type="button"
+              onClick={() => setIsCollapsed((prev) => !prev)}
+              className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors"
+            >
+              {isCollapsed ? '펼치기 ▼' : '접기 ▲'}
+            </button>
+          )}
+        </div>
         {isLoading ? (
           <LoadingSpinner className="py-4" />
         ) : analysis ? (
@@ -102,55 +114,51 @@ export default function ScorePanel({
         )}
       </div>
 
-      {/* 레이더 차트 */}
-      {analysis && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <RadarChart scores={analysis.scores} />
-        </div>
-      )}
+      {/* 접기/펼치기 대상 영역 */}
+      {!isCollapsed && analysis && (
+        <>
+          {/* 레이더 차트 */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <RadarChart scores={analysis.scores} />
+          </div>
 
-      {/* 카테고리별 점수 바 */}
-      {analysis && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
-          {(Object.keys(scoreLabels) as (keyof AnalysisResult['scores'])[]).map((key) => {
-            const score = analysis.scores[key]
-            const isLow = score < 65
-            return (
-              <div key={key}>
-                <div className="flex justify-between text-xs text-gray-600 mb-1">
-                  <span>{scoreLabels[key]}</span>
-                  <span className="font-semibold">{score}</span>
+          {/* 카테고리별 점수 바 */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
+            {(Object.keys(scoreLabels) as (keyof AnalysisResult['scores'])[]).map((key) => {
+              const score = analysis.scores[key]
+              const isLow = score < 65
+              return (
+                <div key={key}>
+                  <div className="flex justify-between text-xs text-gray-600 mb-1">
+                    <span>{scoreLabels[key]}</span>
+                    <span className="font-semibold">{score}</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all ${
+                        isLow ? 'bg-orange-400' : 'bg-primary-600'
+                      }`}
+                      style={{ width: `${score}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all ${
-                      isLow ? 'bg-orange-400' : 'bg-primary-600'
-                    }`}
-                    style={{ width: `${score}%` }}
-                  />
-                </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+
+          {/* 강점 / 감점 / 개선사항 */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <FeedbackList
+              strengths={analysis.strengths}
+              improvements={analysis.improvements}
+              penalties={analysis.penalties}
+              oneLiner={analysis.oneLiner}
+            />
+          </div>
+        </>
       )}
 
-      {/* AI 피드백 */}
-      {analysis && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <span className="w-1 h-4 bg-primary-600 rounded-full inline-block" />
-            AI 피드백 상세
-          </h3>
-          <FeedbackList
-            strengths={analysis.strengths}
-            improvements={analysis.improvements}
-            oneLiner={analysis.oneLiner}
-          />
-        </div>
-      )}
-
-      {/* 재분석 영역 */}
+      {/* 재분석 영역 — 항상 표시 */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
         <div className="flex gap-2">
           <select
