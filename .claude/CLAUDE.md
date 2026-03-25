@@ -1,4 +1,4 @@
-# Resumate 프로젝트 컨텍스트
+# Scorely 프로젝트 컨텍스트
 
 ## 서비스 개요
 AI 기반 이력서 분석 및 개선 웹 서비스. **신입 취준생 전용.**
@@ -8,12 +8,12 @@ TipTap 에디터에서 텍스트를 수정하며 재분석받을 수 있다.
 
 ## 모노레포 구조
 ```
-resumate/
+scorely/
 ├── apps/
 │   ├── backend/   # Fastify + TypeScript + Prisma
 │   └── frontend/  # Next.js 14 + TypeScript + Tailwind + TipTap
 └── packages/
-    └── types/     # 공유 타입 (@resumate/types)
+    └── types/     # 공유 타입 (@scorely/types)
 ```
 
 ## 기술 스택
@@ -110,7 +110,7 @@ resumate/
 ### 프론트엔드
 - TipTap 에디터는 반드시 dynamic import (ssr: false)
 - Chart.js 컴포넌트는 'use client' 필수
-- @resumate/types에서 타입 import
+- @scorely/types에서 타입 import
 - API 호출은 src/lib/api.ts의 axios 인스턴스 사용
 
 ## API 엔드포인트 목록

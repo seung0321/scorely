@@ -4,7 +4,7 @@ import { useCallback, useEffect } from 'react'
 import { useEditor as useTipTapEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
-import { ResumeSections } from '@resumate/types'
+import { ResumeSections } from '@scorely/types'
 import { useEditor, useSectionEditor, SaveStatus } from '@/hooks/useEditor'
 import { SECTION_LABELS, SECTION_ORDER, RECOMMENDABLE_SECTIONS } from '@/constants/sections'
 

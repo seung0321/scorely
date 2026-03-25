@@ -1,4 +1,4 @@
-import { AnalysisResult, JobCategory, ResumeVersion, ResumeSections, SectionRecommendResult, RecommendableSectionType } from '@resumate/types'
+import { AnalysisResult, JobCategory, ResumeVersion, ResumeSections, SectionRecommendResult, RecommendableSectionType } from '@scorely/types'
 import api from '@/lib/api'
 
 interface UploadResult {

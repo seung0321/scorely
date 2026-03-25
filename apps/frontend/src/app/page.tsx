@@ -169,7 +169,7 @@ export default function LandingPage() {
               <div className="w-3 h-3 rounded-full bg-green-400" />
               <div className="flex-1 mx-4">
                 <div className="bg-gray-100 rounded-full text-xs text-gray-400 px-3 py-1 text-center w-48 mx-auto">
-                  resumate.kr/analysis
+                  scorely.kr/analysis
                 </div>
               </div>
             </div>
@@ -317,7 +317,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="bg-gray-50 border-t border-gray-200 py-6 px-4">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
-          <p className="text-sm text-gray-400">Resumate © 2025</p>
+          <p className="text-sm text-gray-400">Scorely © 2025</p>
           <div className="flex gap-4 text-sm text-gray-400">
             <a href="#" className="hover:text-gray-600">이용약관</a>
             <a href="#" className="hover:text-gray-600">개인정보처리방침</a>

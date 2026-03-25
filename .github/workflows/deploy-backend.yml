@@ -29,7 +29,7 @@ jobs:
             pnpm install --frozen-lockfile
             cd apps/backend && npx prisma generate
             cd /home/ubuntu/scorely
-            pnpm --filter @resumate/types build
-            pnpm --filter @resumate/backend build
+            pnpm --filter @scorely/types build
+            pnpm --filter @scorely/backend build
             pm2 reload /home/ubuntu/scorely/apps/backend/ecosystem.config.js --update-env
             pm2 save

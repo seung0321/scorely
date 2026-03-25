@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { AnalysisResult, JobCategory, ResumeVersion, RecommendableSectionType, RECOMMENDABLE_SECTION_TYPES } from '@resumate/types'
+import { AnalysisResult, JobCategory, ResumeVersion, RecommendableSectionType, RECOMMENDABLE_SECTION_TYPES } from '@scorely/types'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import { useResume } from '@/hooks/useResume'
 import { getApiErrorMessage } from '@/contexts/AuthContext'

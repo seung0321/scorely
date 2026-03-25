@@ -1,4 +1,4 @@
-import { JobCategory } from '@resumate/types'
+import { JobCategory } from '@scorely/types'
 
 export const CATEGORY_PENALTY: Partial<Record<JobCategory, string>> = {
   'IT개발·데이터': `[IT개발·데이터 전용]

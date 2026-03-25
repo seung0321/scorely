@@ -37,7 +37,7 @@ importers:
       '@prisma/client':
         specifier: ^5.8.1
         version: 5.22.0(prisma@5.22.0)
-      '@resumate/types':
+      '@scorely/types':
         specifier: workspace:*
         version: link:../../packages/types
       bcryptjs:
@@ -80,7 +80,7 @@ importers:
 
   apps/frontend:
     dependencies:
-      '@resumate/types':
+      '@scorely/types':
         specifier: workspace:*
         version: link:../../packages/types
       '@tiptap/extension-placeholder':

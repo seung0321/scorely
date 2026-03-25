@@ -1,4 +1,4 @@
-import { JobCategory, AnalysisResult, ResumeVersion, ResumeSections } from '@resumate/types'
+import { JobCategory, AnalysisResult, ResumeVersion, ResumeSections } from '@scorely/types'
 import { z } from 'zod'
 import { resumeRepository, buildEditedTextFromSections } from '../repositories/resume.repository'
 import { analysisRepository } from '../repositories/analysis.repository'

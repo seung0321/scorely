@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { JobCategory, JOB_CATEGORIES, ResumeSections, RECOMMENDABLE_SECTION_TYPES } from '@resumate/types'
+import { JobCategory, JOB_CATEGORIES, ResumeSections, RECOMMENDABLE_SECTION_TYPES } from '@scorely/types'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { resumeService } from '../services/resume.service'
 import { recommendSection } from '../services/gemini'

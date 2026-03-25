@@ -52,7 +52,7 @@ export default function RegisterPage() {
     <div className="min-h-[calc(100vh-64px)] bg-gray-100 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="text-2xl font-bold text-primary-600">Resumate</Link>
+          <Link href="/" className="text-2xl font-bold text-primary-600">Scorely</Link>
           <h1 className="text-xl font-bold text-gray-900 mt-3">회원가입</h1>
           <p className="text-sm text-gray-500 mt-1">무료로 시작하세요</p>
         </div>

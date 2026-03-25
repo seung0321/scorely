@@ -1,10 +1,10 @@
 {
-  "name": "@resumate/backend",
+  "name": "@scorely/backend",
   "version": "1.0.0",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "pnpm --filter @resumate/types build && nodemon --watch src --exec ts-node src/server.ts",
-    "build": "pnpm --filter @resumate/types build && tsc",
+    "dev": "pnpm --filter @scorely/types build && nodemon --watch src --exec ts-node src/server.ts",
+    "build": "pnpm --filter @scorely/types build && tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
@@ -22,7 +22,7 @@
     "@fastify/swagger-ui": "^4.2.0",
     "@google/genai": "^1.45.0",
     "@prisma/client": "^5.8.1",
-    "@resumate/types": "workspace:*",
+    "@scorely/types": "workspace:*",
     "bcryptjs": "^3.0.3",
     "dotenv": "^16.3.1",
     "fastify": "^4.25.2",

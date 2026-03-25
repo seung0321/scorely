@@ -26,7 +26,7 @@ jobs:
         run: cd apps/backend && npx prisma generate
 
       - name: Typecheck backend
-        run: pnpm --filter @resumate/backend typecheck
+        run: pnpm --filter @scorely/backend typecheck
 
       - name: Typecheck frontend
-        run: pnpm --filter @resumate/frontend typecheck
+        run: pnpm --filter @scorely/frontend typecheck

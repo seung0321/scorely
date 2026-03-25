@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ResumeSections } from '@resumate/types'
+import { ResumeSections } from '@scorely/types'
 import { useResume } from './useResume'
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'

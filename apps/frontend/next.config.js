@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@resumate/types'],
+  transpilePackages: ['@scorely/types'],
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {
