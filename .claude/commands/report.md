@@ -4,19 +4,19 @@ allowed-tools: Bash(git log:*), Bash(git diff:*), Bash(git status:*)
 ---
 
 <git_log>
-!`git log --since="today" --oneline --all`
+!`git log --since="1 day ago" --oneline --all`
 </git_log>
 
 <git_diff>
-!`git log --since="today" --oneline --stat`
+!`git log --since="1 day ago" --oneline --stat`
 </git_diff>
 
 <git_commit_detail>
-!`git log --since="today" --pretty=format:"[%h] %s%n%b" --all`
+!`git log --since="1 day ago" --pretty=format:"[%h] %s%n%b" --all`
 </git_commit_detail>
 
 <git_files_changed>
-!`git diff --stat HEAD~$(git log --since="today" --oneline | wc -l) HEAD 2>/dev/null || git diff --stat`
+!`git log --since="1 day ago" --name-status --pretty=format:"[%h] %s"`
 </git_files_changed>
 
 위 git 정보를 바탕으로 오늘 작업을 **깊이 있게 분석**해서 노션 페이지를 생성해줘.

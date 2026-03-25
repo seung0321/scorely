@@ -1,10 +1,10 @@
 # Resumate 프로젝트 컨텍스트
 
 ## 서비스 개요
-AI 기반 이력서 분석 및 개선 웹 서비스.
+AI 기반 이력서 분석 및 개선 웹 서비스. **신입 취준생 전용.**
 취준생이 PDF 이력서를 업로드하면 Gemini AI가 직군별로 분석하고,
 TipTap 에디터에서 텍스트를 수정하며 재분석받을 수 있다.
-버전마다 점수 변화를 추적하는 히스토리 기능 포함.
+섹션별 AI 추천 기능, 버전마다 점수 변화를 추적하는 히스토리 기능 포함.
 
 ## 모노레포 구조
 ```
@@ -54,21 +54,38 @@ resumate/
 ### 재분석 흐름
 1. TipTap 에디터에서 텍스트 수정
 2. 500ms 디바운스 후 PATCH /api/resume/:id/text 자동 저장
-3. 재분석 버튼 클릭 → editedText를 Gemini에 텍스트로 전달
+3. 재분석 버튼 클릭 → editedText를 Gemini에 텍스트로 전달 (sections 미포함)
 4. 새 버전(version+1)으로 Resume + Analysis 저장
+5. **coverLetter는 재분석 텍스트에서 제외**
+
+### 섹션별 AI 추천 흐름
+1. 에디터에서 특정 섹션의 "AI 추천 받기" 버튼 클릭
+2. POST /api/resume/:id/section-recommend 호출
+3. sectionType + content + jobCategory + context(improvements, penalties) → Gemini
+4. 추천 텍스트를 RecommendPanel 사이드바에 표시
+5. 사용자가 "적용" 버튼으로 에디터에 반영
 
 ### DB 핵심 필드
-- Resume.extractedText: PDF 최초 추출 원본
+- Resume.extractedText: PDF 최초 추출 원본 (불변)
 - Resume.editedText: 사용자 수정 텍스트 (재분석에 사용)
 - Resume.version: 버전 번호 (재분석마다 증가)
 - Resume.sections: 섹션별 파싱된 텍스트 (JSON)
-- Resume.experienceLevel: 신입/경력 구분
-- Analysis.expertiseScore: 전문성 점수
-- Analysis.experienceScore: 경험 점수
-- Analysis.achievementScore: 성과 점수
-- Analysis.communicationScore: 커뮤니케이션 점수
-- Analysis.structureScore: 구조 점수
+- Resume.experienceLevel: 항상 "신입" (고정값, 경력 모드 없음)
+- Resume.jobCategory: 직군 (13종)
+- Analysis.expertiseScore: 전문성 점수 (기술스택 적합도)
+- Analysis.experienceScore: 실무경험 점수
+- Analysis.achievementScore: 성과/프로젝트 점수
+- Analysis.communicationScore: 협업/커뮤니케이션 점수
+- Analysis.structureScore: 이력서 구성/가독성 점수
+- Analysis.totalScore: 5개 점수 평균 (반올림)
 - Analysis.penalties: 감점 항목 (category, reason, deduction)
+
+## 신입 전용 분석 특징
+- **경력 모드 없음**: 모든 분석은 신입 기준으로만 평가
+- **인턴 부재 감점 금지**: 정규 인턴 없어도 감점하지 않음
+- **부트캠프/교육과정 강조**: 수료 경험이 점수에 긍정 반영
+- **신입 평가 포인트**: 각 직군별 category-guide에 `newGradFocus`, `newGradScoreGuide` 포함
+- **점수 상한**: 일부 항목은 신입 기준 최대 90점 (직군별 상이)
 
 ## 코드 규칙
 
@@ -101,18 +118,56 @@ POST   /api/auth/register
 POST   /api/auth/login
 GET    /api/auth/me
 
-POST   /api/resume/upload              # PDF 업로드 + 최초 분석
-PATCH  /api/resume/:id/text           # editedText 자동 저장
-PATCH  /api/resume/:id/sections       # 섹션별 텍스트 저장
-POST   /api/resume/:id/reanalyze      # 재분석 (새 버전 생성)
-GET    /api/resume/history            # 전체 버전 목록
-GET    /api/resume/:id                # 특정 버전 상세
-DELETE /api/resume/:id                # 이력서 삭제
+POST   /api/resume/upload                      # PDF 업로드 + 최초 분석
+PATCH  /api/resume/:id/text                   # editedText 자동 저장
+PATCH  /api/resume/:id/sections               # 섹션별 텍스트 저장
+POST   /api/resume/:id/reanalyze              # 재분석 (새 버전 생성)
+POST   /api/resume/:id/section-recommend      # 섹션별 AI 추천 (NEW)
+GET    /api/resume/history                    # 전체 버전 목록
+GET    /api/resume/:id                        # 특정 버전 상세
+DELETE /api/resume/:id                        # 이력서 삭제
 
-GET    /api/analysis/history          # 점수 히스토리 (차트용)
+GET    /api/analysis/history                  # 점수 히스토리 (차트용)
 
-GET    /health                        # 서버 상태 확인
-GET    /docs                          # Swagger UI
+GET    /health                                # 서버 상태 확인
+GET    /docs                                  # Swagger UI
+
+### section-recommend 상세
+- Body: { sectionType, content, jobCategory }
+- sectionType: 'summary' | 'experience' | 'projects' | 'awards' | 'education' | 'activities'
+- Response: { recommendedText: string }
+- 현재 분석의 improvements/penalties를 context로 Gemini에 전달
+
+## 프론트엔드 페이지 구조
+- `/` - 랜딩 (신입 취준생 타겟 UI)
+- `/register` - 회원가입
+- `/login` - 로그인
+- `/upload` - PDF 업로드 + 직군 선택
+- `/analysis/[id]` - 분석 결과 + TipTap 에디터 + RecommendPanel
+- `/history` - 버전 히스토리 + 점수 차트
+
+## 주요 컴포넌트
+- `RecommendPanel.tsx` - 섹션별 AI 추천 사이드바 (NEW)
+  - 상태: idle → loading → done/error
+  - 적용 버튼으로 에디터에 직접 반영
+- `ScoreDashboard.tsx` - 5개 점수 바 + 레이더 차트 + oneLiner
+- `ResumeEditor.tsx` - TipTap 에디터 (각 섹션에 "AI 추천 받기" 버튼 포함)
+- `RadarChart.tsx` - 5차원 레이더 차트
+- `FeedbackList.tsx` - 강점/개선사항 리스트
+- `HistoryChart.tsx` - 버전별 점수 추이 라인 차트
+
+## 섹션 관련 상수 (apps/frontend/src/constants/sections.ts)
+- `SECTION_ORDER`: summary, experience, education, training, projects, skills, certifications, activities, awards, coverLetter
+- `RECOMMENDABLE_SECTIONS`: summary, experience, projects, awards, education, activities (AI 추천 가능 섹션)
+- **coverLetter**: 에디터에서 편집 가능하나 재분석 텍스트에서 제외
+
+## Gemini 서비스 구조 (apps/backend/src/services/gemini/)
+- `analyze.ts` - 진입점 (analyzeResume, extractTextAndAnalyze, recommendSection)
+- `prompt-builder.ts` - buildPrompt / buildExtractPrompt / buildSectionRecommendPrompt
+- `response-parser.ts` - AI 응답 파싱/검증, totalScore 계산
+- `types.ts` - 내부 타입 정의
+- `category-guides/` - 직군별 가이드 13개 (각각 criteria, keywords, newGradFocus, newGradScoreGuide 포함)
+- `common-guides.ts` - 공통 점수 가이드 (communication, structure)
 
 ## 환경변수 목록
 ### 백엔드 (.env)
@@ -145,6 +200,9 @@ NEXT_PUBLIC_API_URL=http://localhost:3000
 - JWT 만료: 7일
 - PDF 최대 크기: 10MB
 - bcryptjs saltRounds: 10
+- experienceLevel은 항상 "신입" (경력 모드 코드 추가 금지)
+- 재분석 시 editedText만 사용 (sections 데이터 미포함)
+- coverLetter는 재분석 및 AI 추천 대상에서 제외
 
 ## PR 문서 작성 규칙
 사용자가 "PR 작성해줘" 또는 "PR 문서 만들어줘"라고 하면 아래 절차를 자동으로 따른다.
