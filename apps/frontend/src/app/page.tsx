@@ -147,7 +147,7 @@ export default function LandingPage() {
               서비스 둘러보기
             </Link>
           </div>
-          <p className="mt-4 text-sm text-gray-500">회원가입 무료 · 신용카드 필요 없음</p>
+          <p className="mt-4 text-sm text-gray-500">회원가입 무료 · 5시간마다 5회 무료 분석</p>
         </div>
       </section>
 

@@ -110,10 +110,7 @@ export default function HistoryPage() {
             {/* 점수 추이 차트 */}
             {scoreHistory.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold text-gray-800">점수 변화 추이</h2>
-                  <span className="text-xs text-gray-400">최근 {scoreHistory.length}개 버전 기준</span>
-                </div>
+                <h2 className="text-base font-semibold text-gray-800 mb-4">점수 변화 추이</h2>
                 <HistoryChart data={scoreHistory} />
               </div>
             )}

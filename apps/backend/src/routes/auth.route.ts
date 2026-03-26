@@ -2,19 +2,32 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { createAuthService } from '../services/auth.service'
 import { authMiddleware } from '../middlewares/auth.middleware'
+import { getRateLimitStatus, getClientIp } from '../middlewares/rate-limit.middleware'
 import { success } from '../utils/apiResponse'
 import { AppError } from '../middlewares/errorHandler'
 import { JwtPayload } from '../types/fastify'
 
 const registerSchema = z.object({
   email: z.string().email('유효한 이메일을 입력해주세요'),
-  password: z.string().min(8, '비밀번호는 최소 8자 이상이어야 합니다'),
+  password: z.string()
+    .min(8, '비밀번호는 최소 8자 이상이어야 합니다')
+    .regex(/[a-zA-Z]/, '비밀번호에 영문자를 포함해주세요')
+    .regex(/[0-9]/, '비밀번호에 숫자를 포함해주세요')
+    .regex(/[^a-zA-Z0-9]/, '비밀번호에 특수문자를 포함해주세요'),
   name: z.string().min(2, '이름은 최소 2자 이상이어야 합니다'),
 })
 
 const loginSchema = z.object({
   email: z.string().email('유효한 이메일을 입력해주세요'),
   password: z.string().min(1, '비밀번호를 입력해주세요'),
+})
+
+const refreshSchema = z.object({
+  refreshToken: z.string().min(1, '리프레시 토큰을 입력해주세요'),
+})
+
+const logoutSchema = z.object({
+  refreshToken: z.string().min(1, '리프레시 토큰을 입력해주세요'),
 })
 
 const userSchema = {
@@ -35,7 +48,8 @@ const authResponseSchema = {
     data: {
       type: 'object',
       properties: {
-        token: { type: 'string' },
+        accessToken: { type: 'string' },
+        refreshToken: { type: 'string' },
         user: userSchema,
       },
     },
@@ -123,6 +137,76 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return reply.send(success(result, '로그인이 완료되었습니다'))
   })
 
+  // POST /api/auth/refresh — 토큰 갱신
+  app.post('/refresh', {
+    schema: {
+      tags: ['Auth'],
+      summary: '토큰 갱신',
+      body: {
+        type: 'object',
+        required: ['refreshToken'],
+        properties: {
+          refreshToken: { type: 'string' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                accessToken: { type: 'string' },
+                refreshToken: { type: 'string' },
+              },
+            },
+          },
+        },
+        401: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const parsed = refreshSchema.safeParse(request.body)
+    if (!parsed.success) {
+      throw new AppError(400, '리프레시 토큰이 필요합니다', 'VALIDATION_ERROR')
+    }
+
+    const result = await authService.refresh(parsed.data.refreshToken)
+    return reply.send(success(result))
+  })
+
+  // POST /api/auth/logout — 로그아웃 (RT 삭제)
+  app.post('/logout', {
+    schema: {
+      tags: ['Auth'],
+      summary: '로그아웃',
+      body: {
+        type: 'object',
+        required: ['refreshToken'],
+        properties: {
+          refreshToken: { type: 'string' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const parsed = logoutSchema.safeParse(request.body)
+    if (parsed.success) {
+      await authService.logout(parsed.data.refreshToken)
+    }
+    return reply.send(success(null, '로그아웃이 완료되었습니다'))
+  })
+
+  // GET /api/auth/me — 내 정보 조회
   app.get('/me', {
     schema: {
       tags: ['Auth'],
@@ -144,5 +228,73 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const { userId } = request.user as JwtPayload
     const user = await authService.getMe(userId)
     return reply.send(success(user))
+  })
+
+  // DELETE /api/auth/account — 회원 탈퇴
+  app.delete('/account', {
+    schema: {
+      tags: ['Auth'],
+      summary: '회원 탈퇴',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+        401: errorResponseSchema,
+      },
+    },
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    const { userId } = request.user as JwtPayload
+    await authService.deleteAccount(userId)
+    return reply.send(success(null, '회원 탈퇴가 완료되었습니다'))
+  })
+
+  // GET /api/auth/rate-limit-status — Rate limit 사용량 조회
+  app.get('/rate-limit-status', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'AI 사용량 조회',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                analysis: {
+                  type: 'object',
+                  properties: {
+                    used: { type: 'number' },
+                    max: { type: 'number' },
+                    resetAt: { type: 'string', nullable: true },
+                  },
+                },
+                recommend: {
+                  type: 'object',
+                  properties: {
+                    used: { type: 'number' },
+                    max: { type: 'number' },
+                    resetAt: { type: 'string', nullable: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+        401: errorResponseSchema,
+      },
+    },
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    const ip = getClientIp(request)
+    const status = getRateLimitStatus(ip)
+    return reply.send(success(status))
   })
 }

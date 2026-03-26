@@ -242,6 +242,11 @@ export const resumeService = {
     await deleteFromS3(s3Key)
   },
 
+  async deleteAllResumes(userId: string): Promise<void> {
+    const s3Keys = await resumeRepository.deleteAllByUserId(userId)
+    await Promise.allSettled(s3Keys.map((key) => deleteFromS3(key)))
+  },
+
   async getHistory(userId: string): Promise<ResumeVersion[]> {
     const resumes = await resumeRepository.findAllByUserId(userId)
     return resumes.map(toResumeVersion)

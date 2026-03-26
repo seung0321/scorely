@@ -2,11 +2,24 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { JobCategory, JOB_CATEGORIES, ResumeSections, RECOMMENDABLE_SECTION_TYPES } from '@scorely/types'
 import { authMiddleware } from '../middlewares/auth.middleware'
+import { createRateLimitMiddleware } from '../middlewares/rate-limit.middleware'
 import { resumeService } from '../services/resume.service'
 import { recommendSection } from '../services/gemini'
 import { success } from '../utils/apiResponse'
 import { AppError } from '../middlewares/errorHandler'
 import { JwtPayload } from '../types/fastify'
+
+const analysisRateLimit = createRateLimitMiddleware({
+  category: 'analysis',
+  maxRequests: 5,
+  windowMs: 5 * 60 * 60 * 1000,
+})
+
+const recommendRateLimit = createRateLimitMiddleware({
+  category: 'recommend',
+  maxRequests: 10,
+  windowMs: 5 * 60 * 60 * 1000,
+})
 
 
 const sectionRecommendSchema = z.object({
@@ -110,6 +123,30 @@ const resumeVersionSchema = {
 }
 
 export async function resumeRoutes(app: FastifyInstance): Promise<void> {
+  // DELETE /api/resume/all — /:resumeId 라우트보다 먼저 등록
+  app.delete('/all', {
+    schema: {
+      tags: ['Resume'],
+      summary: '이력서 전체 삭제',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+        401: errorResponseSchema,
+      },
+    },
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    const { userId } = request.user as JwtPayload
+    await resumeService.deleteAllResumes(userId)
+    return reply.send(success(null, '모든 이력서가 삭제되었습니다'))
+  })
+
   // POST /api/resume/upload
   app.post('/upload', {
     schema: {
@@ -137,7 +174,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
         401: errorResponseSchema,
       },
     },
-    preHandler: authMiddleware,
+    preHandler: [authMiddleware, analysisRateLimit],
   }, async (request, reply) => {
     const { userId } = request.user as JwtPayload
 
@@ -325,7 +362,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
         404: errorResponseSchema,
       },
     },
-    preHandler: authMiddleware,
+    preHandler: [authMiddleware, analysisRateLimit],
   }, async (request, reply) => {
     const { userId } = request.user as JwtPayload
     const { resumeId } = request.params as { resumeId: string }
@@ -444,7 +481,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
         404: errorResponseSchema,
       },
     },
-    preHandler: authMiddleware,
+    preHandler: [authMiddleware, recommendRateLimit],
   }, async (request, reply) => {
     const { userId } = request.user as JwtPayload
     const { resumeId } = request.params as { resumeId: string }

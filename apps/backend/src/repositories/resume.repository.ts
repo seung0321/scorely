@@ -179,4 +179,18 @@ export const resumeRepository = {
       throw new AppError(500, 'DB 삭제 오류', 'INTERNAL_ERROR')
     }
   },
+
+  async deleteAllByUserId(userId: string): Promise<string[]> {
+    try {
+      const resumes = await prisma.resume.findMany({
+        where: { userId },
+        select: { s3Key: true },
+      })
+      await prisma.resume.deleteMany({ where: { userId } })
+      return resumes.map((r) => r.s3Key)
+    } catch (err) {
+      console.error('[resumeRepository.deleteAllByUserId]', err)
+      throw new AppError(500, 'DB 삭제 오류', 'INTERNAL_ERROR')
+    }
+  },
 }

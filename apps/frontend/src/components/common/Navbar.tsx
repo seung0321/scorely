@@ -3,13 +3,14 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import Logo from '@/components/common/Logo'
 
 export default function Navbar() {
   const { user, logout, loading } = useAuth()
   const router = useRouter()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     router.push('/')
   }
 
@@ -17,8 +18,8 @@ export default function Navbar() {
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="text-primary-600 font-bold text-xl">
-            Scorely
+          <Link href="/" className="hover:opacity-80 transition-opacity">
+            <Logo size="sm" />
           </Link>
 
           {!loading && (
@@ -36,6 +37,12 @@ export default function Navbar() {
                     className="text-gray-600 hover:text-gray-900 text-sm font-medium"
                   >
                     업로드
+                  </Link>
+                  <Link
+                    href="/mypage"
+                    className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+                  >
+                    내 정보
                   </Link>
                   <button
                     onClick={handleLogout}
