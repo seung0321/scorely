@@ -8,8 +8,8 @@ export default function Navbar() {
   const { user, logout, loading } = useAuth()
   const router = useRouter()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     router.push('/')
   }
 
@@ -36,6 +36,12 @@ export default function Navbar() {
                     className="text-gray-600 hover:text-gray-900 text-sm font-medium"
                   >
                     업로드
+                  </Link>
+                  <Link
+                    href="/mypage"
+                    className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+                  >
+                    내 정보
                   </Link>
                   <button
                     onClick={handleLogout}

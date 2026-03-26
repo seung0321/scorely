@@ -40,11 +40,16 @@ export default function ScoreDashboard({
   const [selectedCategory, setSelectedCategory] = useState<JobCategory>(currentJobCategory)
   const [isReanalyzing, setIsReanalyzing] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [reanalyzeError, setReanalyzeError] = useState<string | null>(null)
 
   const handleReanalyze = async () => {
     setIsReanalyzing(true)
+    setReanalyzeError(null)
     try {
       await onReanalyze(selectedCategory)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '재분석 중 오류가 발생했습니다.'
+      setReanalyzeError(message)
     } finally {
       setIsReanalyzing(false)
     }
@@ -89,6 +94,9 @@ export default function ScoreDashboard({
           </button>
 
           {isSaving && <span className="text-xs text-gray-400">저장 중...</span>}
+          {reanalyzeError && (
+            <span className="text-xs text-red-500 font-medium">{reanalyzeError}</span>
+          )}
         </div>
 
         {/* 오른쪽: 히스토리 + 접기 버튼 */}
