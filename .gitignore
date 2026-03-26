@@ -63,4 +63,5 @@ temp/
 prisma/migrations/**/migration.sql.bak
 
 # Docs
-docs/
+docs/*
+!docs/banner.svg
