@@ -3,7 +3,10 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { User } from '@scorely/types'
 import api from '@/lib/api'
-import { getToken, removeToken, setToken } from '@/lib/auth'
+import {
+  getToken, setToken, removeToken,
+  getRefreshToken, setRefreshToken, removeRefreshToken,
+} from '@/lib/auth'
 import axios from 'axios'
 
 interface LoginInput {
@@ -22,7 +25,7 @@ interface AuthContextValue {
   loading: boolean
   login: (input: LoginInput) => Promise<void>
   register: (input: RegisterInput) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -37,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(res.data.data)
     } catch {
       removeToken()
+      removeRefreshToken()
       setUser(null)
     } finally {
       setLoading(false)
@@ -52,25 +56,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchMe])
 
   const login = useCallback(async (input: LoginInput) => {
-    const res = await api.post<{ success: true; data: { token: string; user: User } }>(
-      '/api/auth/login',
-      input
-    )
-    setToken(res.data.data.token)
+    const res = await api.post<{
+      success: true
+      data: { accessToken: string; refreshToken: string; user: User }
+    }>('/api/auth/login', input)
+
+    setToken(res.data.data.accessToken)
+    setRefreshToken(res.data.data.refreshToken)
     setUser(res.data.data.user)
   }, [])
 
   const register = useCallback(async (input: RegisterInput) => {
-    const res = await api.post<{ success: true; data: { token: string; user: User } }>(
-      '/api/auth/register',
-      input
-    )
-    setToken(res.data.data.token)
+    const res = await api.post<{
+      success: true
+      data: { accessToken: string; refreshToken: string; user: User }
+    }>('/api/auth/register', input)
+
+    setToken(res.data.data.accessToken)
+    setRefreshToken(res.data.data.refreshToken)
     setUser(res.data.data.user)
   }, [])
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      const refreshToken = getRefreshToken()
+      if (refreshToken) {
+        await api.post('/api/auth/logout', { refreshToken })
+      }
+    } catch {
+      // 실패해도 로컬 토큰은 제거
+    }
     removeToken()
+    removeRefreshToken()
     setUser(null)
   }, [])
 

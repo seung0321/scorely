@@ -9,6 +9,7 @@ interface FieldErrors {
   name?: string
   email?: string
   password?: string
+  passwordConfirm?: string
   api?: string
 }
 
@@ -18,6 +19,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordConfirm, setPasswordConfirm] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -29,7 +31,16 @@ export default function RegisterPage() {
     const next: FieldErrors = {}
     if (name.length < 2) next.name = '이름은 2자 이상이어야 합니다.'
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = '올바른 이메일 형식을 입력하세요.'
-    if (password.length < 8) next.password = '비밀번호는 8자 이상이어야 합니다.'
+    if (password.length < 8) {
+      next.password = '비밀번호는 8자 이상이어야 합니다.'
+    } else if (!/[a-zA-Z]/.test(password)) {
+      next.password = '영문자를 포함해주세요.'
+    } else if (!/[0-9]/.test(password)) {
+      next.password = '숫자를 포함해주세요.'
+    } else if (!/[^a-zA-Z0-9]/.test(password)) {
+      next.password = '특수문자를 포함해주세요.'
+    }
+    if (password !== passwordConfirm) next.passwordConfirm = '비밀번호가 일치하지 않습니다.'
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -93,12 +104,26 @@ export default function RegisterPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="8자 이상 입력하세요"
+                placeholder="영문 + 숫자 + 특수문자 포함 8자 이상"
                 className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none transition-colors ${
                   errors.password ? 'border-red-400' : 'border-gray-300 focus:border-primary-500'
                 }`}
               />
               {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호 확인</label>
+              <input
+                type="password"
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+                placeholder="비밀번호를 다시 입력하세요"
+                className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none transition-colors ${
+                  errors.passwordConfirm ? 'border-red-400' : 'border-gray-300 focus:border-primary-500'
+                }`}
+              />
+              {errors.passwordConfirm && <p className="mt-1 text-xs text-red-600">{errors.passwordConfirm}</p>}
             </div>
 
             {errors.api && (
