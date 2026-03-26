@@ -8,6 +8,7 @@ export type ErrorCode =
   | 'AI_ERROR'
   | 'S3_ERROR'
   | 'INTERNAL_ERROR'
+  | 'RATE_LIMIT_EXCEEDED'
 
 export class AppError extends Error {
   constructor(

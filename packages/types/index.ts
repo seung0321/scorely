@@ -104,3 +104,14 @@ export interface ApiError {
 }
 
 export type ApiResponse<T> = ApiSuccess<T> | ApiError
+
+export interface RateLimitInfo {
+  used: number
+  max: number
+  resetAt: string | null
+}
+
+export interface RateLimitStatus {
+  analysis: RateLimitInfo
+  recommend: RateLimitInfo
+}
