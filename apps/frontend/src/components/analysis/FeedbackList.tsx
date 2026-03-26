@@ -1,4 +1,4 @@
-import { Improvement, Penalty } from '@resumate/types'
+import { Improvement, Penalty } from '@scorely/types'
 
 interface FeedbackListProps {
   strengths: string[]

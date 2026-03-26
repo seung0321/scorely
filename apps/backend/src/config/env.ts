@@ -6,6 +6,7 @@ dotenv.config()
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(1),
+  REFRESH_TOKEN_SECRET: z.string().min(1),
   AWS_ACCESS_KEY_ID: z.string().min(1),
   AWS_SECRET_ACCESS_KEY: z.string().min(1),
   AWS_REGION: z.string().min(1),

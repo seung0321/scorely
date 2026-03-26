@@ -1,5 +1,5 @@
 {
-  "name": "@resumate/frontend",
+  "name": "@scorely/frontend",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -11,7 +11,7 @@
     "clean": "rm -rf .next out"
   },
   "dependencies": {
-    "@resumate/types": "workspace:*",
+    "@scorely/types": "workspace:*",
     "@tiptap/extension-placeholder": "^2.1.13",
     "@tiptap/react": "^2.1.13",
     "@tiptap/starter-kit": "^2.1.13",

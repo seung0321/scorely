@@ -1,4 +1,4 @@
-import { ScoreDetail, Improvement, Penalty, ResumeSections, AnalysisResult } from '@resumate/types'
+import { ScoreDetail, Improvement, Penalty, ResumeSections, AnalysisResult } from '@scorely/types'
 
 export type CategoryGuideEntry = {
   criteria: string[]

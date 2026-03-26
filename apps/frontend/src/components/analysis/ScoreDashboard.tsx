@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { AnalysisResult, JobCategory, JOB_CATEGORIES } from '@resumate/types'
+import { AnalysisResult, JobCategory, JOB_CATEGORIES } from '@scorely/types'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 
 const RadarChart = dynamic(() => import('./RadarChart'), {

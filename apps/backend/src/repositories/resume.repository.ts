@@ -1,7 +1,7 @@
 import { Resume, Analysis, Prisma, PrismaClient } from '@prisma/client'
 import { prisma } from '../config/prisma'
 import { AppError } from '../middlewares/errorHandler'
-import { ResumeSections } from '@resumate/types'
+import { ResumeSections } from '@scorely/types'
 
 type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
 
@@ -176,6 +176,20 @@ export const resumeRepository = {
     } catch (err) {
       if (err instanceof AppError) throw err
       console.error('[resumeRepository.delete]', err)
+      throw new AppError(500, 'DB 삭제 오류', 'INTERNAL_ERROR')
+    }
+  },
+
+  async deleteAllByUserId(userId: string): Promise<string[]> {
+    try {
+      const resumes = await prisma.resume.findMany({
+        where: { userId },
+        select: { s3Key: true },
+      })
+      await prisma.resume.deleteMany({ where: { userId } })
+      return resumes.map((r) => r.s3Key)
+    } catch (err) {
+      console.error('[resumeRepository.deleteAllByUserId]', err)
       throw new AppError(500, 'DB 삭제 오류', 'INTERNAL_ERROR')
     }
   },

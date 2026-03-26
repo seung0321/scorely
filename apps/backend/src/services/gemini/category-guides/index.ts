@@ -1,4 +1,4 @@
-import { JobCategory } from '@resumate/types'
+import { JobCategory } from '@scorely/types'
 import { CategoryGuideEntry } from '../types'
 import { itDevGuide } from './it-dev'
 import { designGuide } from './design'

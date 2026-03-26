@@ -26,4 +26,12 @@ export const userRepository = {
       throw new AppError(500, 'DB 생성 오류', 'INTERNAL_ERROR')
     }
   },
+
+  async delete(id: string): Promise<void> {
+    try {
+      await prisma.user.delete({ where: { id } })
+    } catch (err) {
+      throw new AppError(500, 'DB 삭제 오류', 'INTERNAL_ERROR')
+    }
+  },
 }

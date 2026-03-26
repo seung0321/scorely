@@ -1,4 +1,4 @@
-import { AnalysisResult, ScoreDetail, ResumeSections } from '@resumate/types'
+import { AnalysisResult, ScoreDetail, ResumeSections } from '@scorely/types'
 import { RawAnalysis, RawExtract, ExtractResult } from './types'
 
 /** 객체/배열 등 비문자열 값을 값만 추출하여 텍스트로 변환 (key 제거) */

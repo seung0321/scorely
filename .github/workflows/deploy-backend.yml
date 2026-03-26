@@ -22,10 +22,14 @@ jobs:
           script: |
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            export PATH="$HOME/.nvm/versions/node/v20.20.2/bin:$PATH"
             cd /home/ubuntu/scorely
+            git stash
             git pull origin main
             pnpm install --frozen-lockfile
             cd apps/backend && npx prisma generate
-            pnpm build --filter @resumate/backend
-            pm2 reload ecosystem.config.js --update-env
+            cd /home/ubuntu/scorely
+            pnpm --filter @scorely/types build
+            pnpm --filter @scorely/backend build
+            pm2 reload /home/ubuntu/scorely/apps/backend/ecosystem.config.js --update-env
             pm2 save

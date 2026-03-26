@@ -1,4 +1,4 @@
-import { JobCategory, AnalysisResult, ResumeVersion, ResumeSections } from '@resumate/types'
+import { JobCategory, AnalysisResult, ResumeVersion, ResumeSections } from '@scorely/types'
 import { z } from 'zod'
 import { resumeRepository, buildEditedTextFromSections } from '../repositories/resume.repository'
 import { analysisRepository } from '../repositories/analysis.repository'
@@ -240,6 +240,11 @@ export const resumeService = {
   async deleteResume(resumeId: string, userId: string): Promise<void> {
     const { s3Key } = await resumeRepository.delete(resumeId, userId)
     await deleteFromS3(s3Key)
+  },
+
+  async deleteAllResumes(userId: string): Promise<void> {
+    const s3Keys = await resumeRepository.deleteAllByUserId(userId)
+    await Promise.allSettled(s3Keys.map((key) => deleteFromS3(key)))
   },
 
   async getHistory(userId: string): Promise<ResumeVersion[]> {

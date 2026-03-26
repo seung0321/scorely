@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { AnalysisResult, JobCategory } from '@resumate/types'
+import { AnalysisResult, JobCategory } from '@scorely/types'
 import FeedbackList from './FeedbackList'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 

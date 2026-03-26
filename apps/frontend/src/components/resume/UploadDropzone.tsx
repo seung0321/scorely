@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { JobCategory } from '@resumate/types'
+import { JobCategory } from '@scorely/types'
 
 const JOB_CATEGORIES: JobCategory[] = [
   'IT개발·데이터',
