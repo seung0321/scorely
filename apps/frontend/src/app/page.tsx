@@ -157,6 +157,58 @@ export default function LandingPage() {
           <p className="text-center text-sm font-medium text-indigo-500 mb-6 tracking-wide uppercase">
             실제 분석 결과 미리보기
           </p>
+          {/* Mobile card */}
+          <div className="md:hidden rounded-xl overflow-hidden shadow-lg bg-white">
+            {/* Score section */}
+            <div className="px-4 pt-4 pb-3 border-b border-gray-100">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-gray-900">이력서 분석 결과</span>
+                  <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full font-medium">V3</span>
+                </div>
+                <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">IT개발·데이터</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col items-center">
+                  <p className="text-xs text-gray-500 mb-1">종합점수</p>
+                  <div className="flex items-end gap-0.5">
+                    <span className="text-3xl font-bold text-indigo-600">81</span>
+                    <span className="text-xs text-gray-400 mb-0.5">/ 100</span>
+                  </div>
+                </div>
+                <div className="w-24 h-24 shrink-0">
+                  <RadarChartStatic />
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  {CATEGORY_SCORES.map(({ label, score }) => (
+                    <div key={label} className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-gray-500 w-10 shrink-0">{label}</span>
+                      <div className="flex-1 bg-gray-100 rounded-full h-1">
+                        <div className="bg-indigo-500 h-1 rounded-full" style={{ width: `${score}%` }} />
+                      </div>
+                      <span className="text-[10px] font-medium text-gray-700 w-5 text-right">{score}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* Feedback */}
+            <div className="px-4 py-3 space-y-2">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-2.5">
+                <p className="text-xs text-green-800">✅ 문제-해결-결과 구조로 기술적 문제 해결 능력을 명확히 제시합니다.</p>
+              </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-2.5">
+                <p className="text-xs text-orange-800">💡 팀 프로젝트 내에서 의견 조율 경험이 구체적으로 서술되어 있지 않습니다.</p>
+              </div>
+            </div>
+            {/* One liner */}
+            <div className="px-4 pb-4">
+              <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 leading-relaxed">
+                문제 해결 능력과 실무 기여 경험이 돋보이는 백엔드 개발자로, 구체적인 기술 역량과 프로젝트 성과가 잘 드러나 있습니다.
+              </p>
+            </div>
+          </div>
+
           {/* Browser frame — desktop only */}
           <div
             className="hidden md:block rounded-xl overflow-hidden shadow-2xl"
@@ -281,7 +333,24 @@ export default function LandingPage() {
       <section id="how-it-works" className="bg-white py-16 px-4">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl font-bold text-center text-gray-900 mb-10">이렇게 사용하세요</h2>
-          <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-0">
+          {/* 모바일: 세로 타임라인 */}
+          <div className="flex flex-col items-start gap-0 md:hidden max-w-[200px] mx-auto">
+            {steps.map((step, i) => (
+              <div key={step.num} className="flex items-start gap-3">
+                <div className="flex flex-col items-center">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-primary-600 text-white shrink-0">
+                    {step.num}
+                  </div>
+                  {i < steps.length - 1 && (
+                    <div className="w-px h-8 bg-gray-300" />
+                  )}
+                </div>
+                <span className="text-sm text-gray-700 pt-2.5">{step.label}</span>
+              </div>
+            ))}
+          </div>
+          {/* PC: 가로 배치 */}
+          <div className="hidden md:flex items-center justify-center">
             {steps.map((step, i) => (
               <div key={step.num} className="flex items-center">
                 <div className="flex flex-col items-center gap-2">
@@ -291,7 +360,7 @@ export default function LandingPage() {
                   <span className="text-xs text-gray-600 text-center whitespace-nowrap">{step.label}</span>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className="hidden md:block w-12 h-px bg-gray-300 mx-2 mb-5" />
+                  <div className="w-12 h-px bg-gray-300 mx-2 mb-5" />
                 )}
               </div>
             ))}
