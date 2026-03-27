@@ -116,37 +116,57 @@ export default function ScoreDashboard({
         </div>
       </div>
 
-      {/* ── 접히는 상단 패널 (h-96 = 384px) ── */}
+      {/* ── 접히는 상단 패널 ── */}
       {!isCollapsed && (
-        <div className="flex border-t border-gray-100" style={{ height: '384px' }}>
+        <div className="flex flex-col md:flex-row border-t border-gray-100 md:h-96">
 
           {/* 좌: 종합점수 + 레이더차트 */}
-          <div className="w-64 flex-shrink-0 flex flex-col items-center p-4 gap-2">
+          <div className="flex-shrink-0 flex flex-col md:w-64 p-4 gap-3">
             {isLoading ? (
               <div className="flex-1 flex items-center justify-center">
                 <LoadingSpinner />
               </div>
             ) : analysis ? (
               <>
-                {/* 종합점수 */}
-                <div className="text-center flex-shrink-0">
-                  <div className="flex items-end justify-center gap-0.5">
-                    <span className="text-4xl font-bold text-primary-600 leading-none">
-                      {analysis.totalScore}
-                    </span>
-                    <span className="text-sm text-gray-400 mb-0.5">/100</span>
+                {/* 모바일: 점수 + 레이더 가로 배치 (가운데 정렬) */}
+                <div className="flex md:flex-col items-center justify-center gap-3">
+                  <div className="text-center flex-shrink-0">
+                    <div className="flex items-end justify-center gap-0.5">
+                      <span className="text-4xl font-bold text-primary-600 leading-none">
+                        {analysis.totalScore}
+                      </span>
+                      <span className="text-sm text-gray-400 mb-0.5">/100</span>
+                    </div>
+                    {scoreDiff !== null && (
+                      <span className={`text-xs font-semibold ${scoreDiff >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                        {scoreDiff >= 0 ? `▲ +${scoreDiff}점` : `▼ ${scoreDiff}점`}
+                      </span>
+                    )}
+                    <p className="text-xs text-gray-400 mt-0.5">v{version}</p>
                   </div>
-                  {scoreDiff !== null && (
-                    <span className={`text-xs font-semibold ${scoreDiff >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                      {scoreDiff >= 0 ? `▲ +${scoreDiff}점` : `▼ ${scoreDiff}점`}
-                    </span>
-                  )}
-                  <p className="text-xs text-gray-400 mt-0.5">v{version}</p>
+                  <div className="w-48 h-48 md:w-full md:flex-1 md:min-h-0">
+                    <RadarChart scores={analysis.scores} />
+                  </div>
                 </div>
 
-                {/* 레이더차트 — 남은 높이 전부 사용 */}
-                <div className="w-full flex-1 min-h-0">
-                  <RadarChart scores={analysis.scores} />
+                {/* 모바일: 점수바를 아래 줄에 표시 */}
+                <div className="space-y-1.5 md:hidden">
+                  {(Object.keys(scoreLabels) as (keyof AnalysisResult['scores'])[]).map((key) => {
+                    const score = analysis.scores[key]
+                    const isLow = score < 65
+                    return (
+                      <div key={key} className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500 w-14 flex-shrink-0">{scoreLabels[key]}</span>
+                        <div className="flex-1 bg-gray-100 rounded-full h-1.5 min-w-0">
+                          <div
+                            className={`h-1.5 rounded-full transition-all ${isLow ? 'bg-orange-400' : 'bg-primary-500'}`}
+                            style={{ width: `${score}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-semibold text-gray-600 w-5 text-right flex-shrink-0">{score}</span>
+                      </div>
+                    )
+                  })}
                 </div>
               </>
             ) : (
@@ -154,14 +174,15 @@ export default function ScoreDashboard({
             )}
           </div>
 
-          <div className="w-px bg-gray-100 flex-shrink-0" />
+          <div className="hidden md:block w-px bg-gray-100 flex-shrink-0" />
+          <div className="md:hidden h-px bg-gray-100 mx-4 flex-shrink-0" />
 
-          {/* 우: 점수바(2열) + 강점/감점/개선사항 */}
+          {/* 우: 점수바(PC) + 강점/감점/개선사항 */}
           {analysis && (
             <div className="flex-1 flex flex-col overflow-hidden">
 
-              {/* 점수바 — 2열 그리드으로 높이 절약 */}
-              <div className="px-4 pt-3 pb-2 grid grid-cols-2 gap-x-6 gap-y-1.5 flex-shrink-0">
+              {/* 점수바 — PC에서만 2열 */}
+              <div className="hidden md:grid px-4 pt-3 pb-2 grid-cols-2 gap-x-6 gap-y-1.5 flex-shrink-0">
                 {(Object.keys(scoreLabels) as (keyof AnalysisResult['scores'])[]).map((key) => {
                   const score = analysis.scores[key]
                   const isLow = score < 65
@@ -180,13 +201,13 @@ export default function ScoreDashboard({
                 })}
               </div>
 
-              <div className="h-px bg-gray-100 mx-4 flex-shrink-0" />
+              <div className="hidden md:block h-px bg-gray-100 mx-4 flex-shrink-0" />
 
-              {/* 강점(좌) | 감점+개선사항(우) 2열 */}
+              {/* 강점/감점/개선사항 */}
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
-                  {/* 좌: 강점 */}
+                  {/* 강점 */}
                   <div className="flex flex-col gap-1.5">
                     <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
@@ -199,7 +220,7 @@ export default function ScoreDashboard({
                     ))}
                   </div>
 
-                  {/* 우: 감점(있는 경우) + 개선사항 */}
+                  {/* 감점 + 개선사항 */}
                   <div className="flex flex-col gap-1.5">
                     {analysis.penalties.length > 0 && (
                       <>
@@ -229,10 +250,10 @@ export default function ScoreDashboard({
                   </div>
                 </div>
 
-                {/* 한 줄 총평 — 전체 너비 */}
+                {/* 한 줄 총평 */}
                 <div className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
                   <span className="text-xs text-gray-400">총평 </span>
-                  <span className="text-xs text-gray-700 font-medium">"{analysis.oneLiner}"</span>
+                  <span className="text-xs text-gray-700 font-medium">&ldquo;{analysis.oneLiner}&rdquo;</span>
                 </div>
               </div>
             </div>

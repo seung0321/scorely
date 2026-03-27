@@ -78,14 +78,14 @@ export default function HistoryPage() {
     <div className="min-h-[calc(100vh-64px)] bg-gray-100 py-8 px-4">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* 헤더 */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">분석 히스토리</h1>
             <p className="text-sm text-gray-500 mt-1">지금까지 업로드한 이력서의 점수 변화를 확인하세요.</p>
           </div>
           <Link
             href="/upload"
-            className="bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors text-center flex-shrink-0 w-fit"
           >
             + 새 이력서 업로드
           </Link>
@@ -130,45 +130,42 @@ export default function HistoryPage() {
                   return (
                     <div
                       key={v.id}
-                      className={`bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-4 ${
+                      className={`bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-4 ${
                         isLatest ? 'bg-primary-50 border-primary-200' : ''
                       }`}
                     >
-                      {/* 버전 배지 */}
-                      <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                          isLatest ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-600'
-                        }`}
-                      >
-                        v{v.version}
-                      </div>
-
-                      {/* 정보 */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900">{v.jobCategory}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {new Date(v.createdAt).toLocaleDateString('ko-KR')}
-                        </p>
-                      </div>
-
-                      {/* 점수 */}
-                      <div className="text-right flex-shrink-0">
-                        <p className={`text-xl font-bold ${isLatest ? 'text-primary-600' : 'text-gray-800'}`}>
-                          {v.analysis?.totalScore ?? '-'}점
-                        </p>
-                        {scoreDiff !== null && (
-                          <p
-                            className={`text-xs font-medium ${
-                              scoreDiff >= 0 ? 'text-green-600' : 'text-red-500'
-                            }`}
-                          >
-                            {scoreDiff >= 0 ? `+${scoreDiff}점` : `${scoreDiff}점`}
+                      {/* 상단: 버전 + 정보 + 점수 */}
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                            isLatest ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-600'
+                          }`}
+                        >
+                          v{v.version}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{v.jobCategory}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {new Date(v.createdAt).toLocaleDateString('ko-KR')}
                           </p>
-                        )}
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className={`text-xl font-bold ${isLatest ? 'text-primary-600' : 'text-gray-800'}`}>
+                            {v.analysis?.totalScore ?? '-'}점
+                          </p>
+                          {scoreDiff !== null && (
+                            <p
+                              className={`text-xs font-medium ${
+                                scoreDiff >= 0 ? 'text-green-600' : 'text-red-500'
+                              }`}
+                            >
+                              {scoreDiff >= 0 ? `+${scoreDiff}점` : `${scoreDiff}점`}
+                            </p>
+                          )}
+                        </div>
                       </div>
-
-                      {/* 버튼 */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* 하단: 버튼 */}
+                      <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
                         <Link
                           href={`/analysis/${v.id}`}
                           className="border border-gray-300 hover:border-primary-400 text-gray-600 hover:text-primary-600 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
