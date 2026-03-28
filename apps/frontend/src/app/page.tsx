@@ -388,9 +388,9 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
           <p className="text-sm text-gray-400">Scorely © 2025</p>
           <div className="flex gap-4 text-sm text-gray-400">
-            <a href="#" className="hover:text-gray-600">이용약관</a>
-            <a href="#" className="hover:text-gray-600">개인정보처리방침</a>
-            <a href="#" className="hover:text-gray-600">고객센터</a>
+            <Link href="/terms" className="hover:text-gray-600">이용약관</Link>
+            <Link href="/privacy" className="hover:text-gray-600">개인정보처리방침</Link>
+            <a href="mailto:bke1304@gmail.com" className="hover:text-gray-600">고객센터</a>
           </div>
         </div>
       </footer>
