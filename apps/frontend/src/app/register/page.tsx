@@ -10,6 +10,8 @@ interface FieldErrors {
   email?: string
   password?: string
   passwordConfirm?: string
+  terms?: string
+  privacy?: string
   api?: string
 }
 
@@ -20,6 +22,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
+  const [agreedTerms, setAgreedTerms] = useState(false)
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -41,6 +45,8 @@ export default function RegisterPage() {
       next.password = '특수문자를 포함해주세요.'
     }
     if (password !== passwordConfirm) next.passwordConfirm = '비밀번호가 일치하지 않습니다.'
+    if (!agreedTerms) next.terms = '이용약관에 동의해주세요.'
+    if (!agreedPrivacy) next.privacy = '개인정보 수집·이용에 동의해주세요.'
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -126,6 +132,34 @@ export default function RegisterPage() {
               {errors.passwordConfirm && <p className="mt-1 text-xs text-red-600">{errors.passwordConfirm}</p>}
             </div>
 
+            <div className="space-y-2 pt-2">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreedTerms}
+                  onChange={(e) => setAgreedTerms(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">
+                  <Link href="/terms" target="_blank" className="text-primary-600 underline">이용약관</Link>에 동의합니다 (필수)
+                </span>
+              </label>
+              {errors.terms && <p className="ml-6 text-xs text-red-600">{errors.terms}</p>}
+
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreedPrivacy}
+                  onChange={(e) => setAgreedPrivacy(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">
+                  <Link href="/privacy" target="_blank" className="text-primary-600 underline">개인정보 수집·이용</Link>에 동의합니다 (필수)
+                </span>
+              </label>
+              {errors.privacy && <p className="ml-6 text-xs text-red-600">{errors.privacy}</p>}
+            </div>
+
             {errors.api && (
               <p className="text-sm text-red-600 text-center">{errors.api}</p>
             )}
@@ -147,8 +181,9 @@ export default function RegisterPage() {
         </div>
 
         <p className="mt-4 text-center text-xs text-gray-400">
-          가입 시{' '}
-          <a href="#" className="underline">서비스 이용약관</a>에 동의하게 됩니다
+          <Link href="/terms" className="underline hover:text-gray-600">이용약관</Link>
+          {' · '}
+          <Link href="/privacy" className="underline hover:text-gray-600">개인정보처리방침</Link>
         </p>
       </div>
     </div>
