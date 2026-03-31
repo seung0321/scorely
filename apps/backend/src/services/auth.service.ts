@@ -144,12 +144,10 @@ export function createAuthService(app: FastifyInstance) {
       await userRepository.delete(userId)
     },
 
-    async googleCallback(code: string): Promise<AuthResult> {
+    async googleCallback(code: string, redirectUri: string): Promise<AuthResult> {
       if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
         throw new AppError(500, 'Google OAuth가 설정되지 않았습니다', 'INTERNAL_ERROR')
       }
-
-      const redirectUri = `${env.BACKEND_URL ?? `http://localhost:${env.PORT}`}/api/auth/google/callback`
 
       // 1. code → token 교환
       const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -189,13 +187,20 @@ export function createAuthService(app: FastifyInstance) {
       let user = await userRepository.findByGoogleId(googleUser.id)
 
       if (!user) {
-        // googleId로 못 찾으면 이메일로 기존 계정 확인
         const existingUser = await userRepository.findByEmail(googleUser.email)
         if (existingUser) {
-          // 기존 이메일 계정에 googleId 연동
+          if (existingUser.password) {
+            // 이메일/비밀번호로 가입된 계정 → 자동 연동 없이 에러
+            throw new AppError(
+              400,
+              '이미 이메일/비밀번호로 가입된 계정입니다. 기존 방식으로 로그인해주세요.',
+              'VALIDATION_ERROR',
+            )
+          }
+          // googleId만 없는 계정 → 연동
           user = await userRepository.updateGoogleId(existingUser.id, googleUser.id)
         } else {
-          // 새 계정 생성 (password 없음)
+          // 신규 사용자 생성 (password 없음)
           user = await userRepository.create({
             email: googleUser.email,
             name: googleUser.name,

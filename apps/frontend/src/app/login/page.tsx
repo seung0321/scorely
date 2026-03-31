@@ -11,9 +11,12 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(
-    searchParams.get('error') === 'oauth_failed' ? 'Google 로그인에 실패했습니다. 다시 시도해주세요.' : null,
-  )
+  const [error, setError] = useState<string | null>(() => {
+    const e = searchParams.get('error')
+    if (e === 'email_conflict') return '이미 이메일/비밀번호로 가입된 계정입니다. 이메일로 로그인해주세요.'
+    if (e === 'oauth_failed') return 'Google 로그인에 실패했습니다. 다시 시도해주세요.'
+    return null
+  })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
