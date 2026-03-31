@@ -7,6 +7,7 @@ import { success } from '../utils/apiResponse'
 import { AppError } from '../middlewares/errorHandler'
 import { JwtPayload } from '../types/fastify'
 import { env } from '../config/env'
+import { FastifyRequest } from 'fastify'
 
 const registerSchema = z.object({
   email: z.string().email('유효한 이메일을 입력해주세요'),
@@ -207,6 +208,15 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return reply.send(success(null, '로그아웃이 완료되었습니다'))
   })
 
+  // request에서 백엔드 콜백 URL 자동 추출 (BACKEND_URL env 불필요)
+  function getCallbackUrl(request: FastifyRequest): string {
+    const proto = (request.headers['x-forwarded-proto'] as string)?.split(',')[0]?.trim() ?? request.protocol
+    const host = (request.headers['x-forwarded-host'] as string)?.split(',')[0]?.trim()
+      ?? request.headers.host
+      ?? request.hostname
+    return `${proto}://${host}/api/auth/google/callback`
+  }
+
   // GET /api/auth/google — Google OAuth 시작
   app.get('/google', {
     schema: {
@@ -216,19 +226,18 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         302: { type: 'string' },
       },
     },
-  }, async (_request, reply) => {
+  }, async (request, reply) => {
     if (!env.GOOGLE_CLIENT_ID) {
       throw new AppError(500, 'Google OAuth가 설정되지 않았습니다', 'INTERNAL_ERROR')
     }
 
-    const redirectUri = `${env.BACKEND_URL ?? `http://localhost:${env.PORT}`}/api/auth/google/callback`
+    const redirectUri = getCallbackUrl(request)
     const params = new URLSearchParams({
       client_id: env.GOOGLE_CLIENT_ID,
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'openid email profile',
-      access_type: 'offline',
-      prompt: 'consent',
+      prompt: 'select_account',
     })
 
     return reply.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`)
@@ -259,13 +268,18 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      const result = await authService.googleCallback(code)
+      const redirectUri = getCallbackUrl(request)
+      const result = await authService.googleCallback(code, redirectUri)
       const params = new URLSearchParams({
         token: result.accessToken,
         refreshToken: result.refreshToken,
       })
       return reply.redirect(`${frontendUrl}/auth/callback?${params.toString()}`)
-    } catch {
+    } catch (err) {
+      // 이메일/비밀번호 계정 충돌 시 별도 에러 코드로 안내
+      if (err instanceof AppError && err.statusCode === 400) {
+        return reply.redirect(`${frontendUrl}/login?error=email_conflict`)
+      }
       return reply.redirect(`${frontendUrl}/login?error=oauth_failed`)
     }
   })

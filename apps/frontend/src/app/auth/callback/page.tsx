@@ -27,10 +27,10 @@ function AuthCallbackInner() {
     setToken(token)
     setRefreshToken(refreshToken)
 
-    // user 상태 갱신을 위해 /me 호출 후 이동
+    // window.location으로 하드 리다이렉트 → AuthProvider가 새 토큰으로 재초기화됨
     api.get<{ success: true; data: User }>('/api/auth/me')
       .then(() => {
-        router.replace('/history')
+        window.location.href = '/history'
       })
       .catch(() => {
         router.replace('/login?error=oauth_failed')
