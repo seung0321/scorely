@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth, getApiErrorMessage } from '@/contexts/AuthContext'
 
-export default function LoginPage() {
+function LoginForm() {
   const { login, loginWithGoogle, user, loading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -120,5 +120,19 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[calc(100vh-64px)] bg-gray-100 flex items-center justify-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-r-transparent" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   )
 }
