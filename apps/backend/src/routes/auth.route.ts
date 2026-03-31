@@ -6,6 +6,7 @@ import { getRateLimitStatus, getClientIp } from '../middlewares/rate-limit.middl
 import { success } from '../utils/apiResponse'
 import { AppError } from '../middlewares/errorHandler'
 import { JwtPayload } from '../types/fastify'
+import { env } from '../config/env'
 
 const registerSchema = z.object({
   email: z.string().email('유효한 이메일을 입력해주세요'),
@@ -204,6 +205,69 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       await authService.logout(parsed.data.refreshToken)
     }
     return reply.send(success(null, '로그아웃이 완료되었습니다'))
+  })
+
+  // GET /api/auth/google — Google OAuth 시작
+  app.get('/google', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'Google OAuth 로그인 시작',
+      response: {
+        302: { type: 'string' },
+      },
+    },
+  }, async (_request, reply) => {
+    if (!env.GOOGLE_CLIENT_ID) {
+      throw new AppError(500, 'Google OAuth가 설정되지 않았습니다', 'INTERNAL_ERROR')
+    }
+
+    const redirectUri = `${env.BACKEND_URL ?? `http://localhost:${env.PORT}`}/api/auth/google/callback`
+    const params = new URLSearchParams({
+      client_id: env.GOOGLE_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      access_type: 'offline',
+      prompt: 'consent',
+    })
+
+    return reply.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`)
+  })
+
+  // GET /api/auth/google/callback — Google OAuth 콜백
+  app.get('/google/callback', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'Google OAuth 콜백',
+      querystring: {
+        type: 'object',
+        properties: {
+          code: { type: 'string' },
+          error: { type: 'string' },
+        },
+      },
+      response: {
+        302: { type: 'string' },
+      },
+    },
+  }, async (request, reply) => {
+    const { code, error } = request.query as { code?: string; error?: string }
+    const frontendUrl = env.FRONTEND_URL.split(',')[0]
+
+    if (error || !code) {
+      return reply.redirect(`${frontendUrl}/login?error=oauth_failed`)
+    }
+
+    try {
+      const result = await authService.googleCallback(code)
+      const params = new URLSearchParams({
+        token: result.accessToken,
+        refreshToken: result.refreshToken,
+      })
+      return reply.redirect(`${frontendUrl}/auth/callback?${params.toString()}`)
+    } catch {
+      return reply.redirect(`${frontendUrl}/login?error=oauth_failed`)
+    }
   })
 
   // GET /api/auth/me — 내 정보 조회

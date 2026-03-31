@@ -78,7 +78,18 @@ export function createAuthService(app: FastifyInstance) {
 
     async login(data: { email: string; password: string }): Promise<AuthResult> {
       const user = await userRepository.findByEmail(data.email)
-      const isValid = user ? await bcrypt.compare(data.password, user.password) : false
+
+      if (user && !user.password) {
+        throw new AppError(
+          401,
+          'Google 계정으로 가입된 사용자입니다. Google 로그인을 이용해주세요.',
+          'UNAUTHORIZED',
+        )
+      }
+
+      const isValid = user?.password
+        ? await bcrypt.compare(data.password, user.password)
+        : false
 
       if (!user || !isValid) {
         throw new AppError(
@@ -131,6 +142,72 @@ export function createAuthService(app: FastifyInstance) {
       // S3 파일 정리 후 유저 삭제 (cascade로 Resume, Analysis, RefreshToken 자동 삭제)
       await resumeService.deleteAllResumes(userId)
       await userRepository.delete(userId)
+    },
+
+    async googleCallback(code: string): Promise<AuthResult> {
+      if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+        throw new AppError(500, 'Google OAuth가 설정되지 않았습니다', 'INTERNAL_ERROR')
+      }
+
+      const redirectUri = `${env.BACKEND_URL ?? `http://localhost:${env.PORT}`}/api/auth/google/callback`
+
+      // 1. code → token 교환
+      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          client_id: env.GOOGLE_CLIENT_ID,
+          client_secret: env.GOOGLE_CLIENT_SECRET,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }),
+      })
+
+      if (!tokenRes.ok) {
+        throw new AppError(401, 'Google 인증에 실패했습니다', 'UNAUTHORIZED')
+      }
+
+      const tokenData = await tokenRes.json() as { access_token: string }
+
+      // 2. 사용자 정보 조회
+      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      })
+
+      if (!userInfoRes.ok) {
+        throw new AppError(401, 'Google 사용자 정보 조회에 실패했습니다', 'UNAUTHORIZED')
+      }
+
+      const googleUser = await userInfoRes.json() as {
+        id: string
+        email: string
+        name: string
+      }
+
+      // 3. DB에서 사용자 찾기/생성
+      let user = await userRepository.findByGoogleId(googleUser.id)
+
+      if (!user) {
+        // googleId로 못 찾으면 이메일로 기존 계정 확인
+        const existingUser = await userRepository.findByEmail(googleUser.email)
+        if (existingUser) {
+          // 기존 이메일 계정에 googleId 연동
+          user = await userRepository.updateGoogleId(existingUser.id, googleUser.id)
+        } else {
+          // 새 계정 생성 (password 없음)
+          user = await userRepository.create({
+            email: googleUser.email,
+            name: googleUser.name,
+            googleId: googleUser.id,
+          })
+        }
+      }
+
+      const tokens = await createTokenPair(user.id, user.email)
+      const { password: _, ...userWithoutPassword } = user
+
+      return { ...tokens, user: userWithoutPassword }
     },
 
     async getMe(userId: string): Promise<UserWithoutPassword> {
