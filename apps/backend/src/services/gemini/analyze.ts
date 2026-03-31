@@ -102,7 +102,7 @@ export async function extractTextAndAnalyze(
         },
         { text: prompt + hint },
       ],
-      config: { temperature: 0 },
+      config: { temperature: 0, maxOutputTokens: 65536 },
     })
     const raw = result.text ?? ''
     return parseExtractResponse(raw)
