@@ -26,6 +26,7 @@ interface AuthContextValue {
   login: (input: LoginInput) => Promise<void>
   register: (input: RegisterInput) => Promise<void>
   logout: () => Promise<void>
+  loginWithGoogle: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -77,6 +78,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(res.data.data.user)
   }, [])
 
+  const loginWithGoogle = useCallback(() => {
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/google`
+  }, [])
+
   const logout = useCallback(async () => {
     try {
       const refreshToken = getRefreshToken()
@@ -92,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, loginWithGoogle }}>
       {children}
     </AuthContext.Provider>
   )
