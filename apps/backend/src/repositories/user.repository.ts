@@ -19,11 +19,30 @@ export const userRepository = {
     }
   },
 
-  async create(data: { email: string; password: string; name: string }): Promise<User> {
+  async create(data: { email: string; password?: string; name: string; googleId?: string }): Promise<User> {
     try {
       return await prisma.user.create({ data })
     } catch (err) {
       throw new AppError(500, 'DB 생성 오류', 'INTERNAL_ERROR')
+    }
+  },
+
+  async findByGoogleId(googleId: string): Promise<User | null> {
+    try {
+      return await prisma.user.findUnique({ where: { googleId } })
+    } catch (err) {
+      throw new AppError(500, 'DB 조회 오류', 'INTERNAL_ERROR')
+    }
+  },
+
+  async updateGoogleId(id: string, googleId: string): Promise<User> {
+    try {
+      return await prisma.user.update({
+        where: { id },
+        data: { googleId },
+      })
+    } catch (err) {
+      throw new AppError(500, 'DB 업데이트 오류', 'INTERNAL_ERROR')
     }
   },
 
