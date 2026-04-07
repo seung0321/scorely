@@ -19,7 +19,7 @@ export const userRepository = {
     }
   },
 
-  async create(data: { email: string; password?: string; name: string; googleId?: string }): Promise<User> {
+  async create(data: { email: string; password?: string; name: string; googleId?: string; emailVerified?: boolean }): Promise<User> {
     try {
       return await prisma.user.create({ data })
     } catch (err) {
@@ -46,10 +46,32 @@ export const userRepository = {
     }
   },
 
+  async updateEmailVerified(id: string, verified: boolean): Promise<User> {
+    try {
+      return await prisma.user.update({
+        where: { id },
+        data: { emailVerified: verified },
+      })
+    } catch {
+      throw new AppError(500, 'DB 업데이트 오류', 'INTERNAL_ERROR')
+    }
+  },
+
+  async updatePassword(id: string, hashedPassword: string): Promise<User> {
+    try {
+      return await prisma.user.update({
+        where: { id },
+        data: { password: hashedPassword },
+      })
+    } catch {
+      throw new AppError(500, 'DB 업데이트 오류', 'INTERNAL_ERROR')
+    }
+  },
+
   async delete(id: string): Promise<void> {
     try {
       await prisma.user.delete({ where: { id } })
-    } catch (err) {
+    } catch {
       throw new AppError(500, 'DB 삭제 오류', 'INTERNAL_ERROR')
     }
   },

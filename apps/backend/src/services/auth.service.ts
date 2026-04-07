@@ -1,12 +1,17 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import { randomBytes, randomInt, timingSafeEqual } from 'crypto'
 import { FastifyInstance } from 'fastify'
 import { User } from '@prisma/client'
 import { userRepository } from '../repositories/user.repository'
 import { refreshTokenRepository } from '../repositories/refresh-token.repository'
+import { verificationCodeRepository } from '../repositories/verification-code.repository'
+import { passwordResetTokenRepository } from '../repositories/password-reset-token.repository'
 import { resumeService } from './resume.service'
+import { emailService } from './email.service'
 import { AppError } from '../middlewares/errorHandler'
 import { env } from '../config/env'
+import { hashToken } from '../utils/hash'
 
 type UserWithoutPassword = Omit<User, 'password'>
 
@@ -53,14 +58,72 @@ export function createAuthService(app: FastifyInstance) {
   }
 
   return {
+    // 회원가입 전 이메일 인증코드 발송
+    async sendEmailCode(email: string): Promise<void> {
+      const existing = await userRepository.findByEmail(email)
+      if (existing) {
+        throw new AppError(400, '이미 사용 중인 이메일입니다', 'VALIDATION_ERROR')
+      }
+
+      // 60초 rate limit
+      const latest = await verificationCodeRepository.findLatestByEmail(email)
+      if (latest) {
+        const elapsed = Date.now() - latest.createdAt.getTime()
+        if (elapsed < 60 * 1000) {
+          const remaining = Math.ceil((60 * 1000 - elapsed) / 1000)
+          throw new AppError(429, `${remaining}초 후에 다시 요청해주세요`, 'RATE_LIMIT_EXCEEDED')
+        }
+      }
+
+      await verificationCodeRepository.deleteAllByEmail(email)
+      const code = randomInt(100000, 1000000).toString()
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
+      await verificationCodeRepository.create(email, code, expiresAt)
+      await emailService.sendVerificationEmail(email, code)
+    },
+
+    // 회원가입 전 이메일 인증코드 확인
+    async checkEmailCode(email: string, code: string): Promise<void> {
+      const stored = await verificationCodeRepository.findLatestByEmail(email)
+      if (!stored) {
+        throw new AppError(400, '인증 코드가 존재하지 않습니다. 재전송을 요청해주세요.', 'VALIDATION_ERROR')
+      }
+      if (stored.expiresAt < new Date()) {
+        throw new AppError(400, '인증 코드가 만료되었습니다. 재전송을 요청해주세요.', 'VALIDATION_ERROR')
+      }
+
+      const inputHash = Buffer.from(hashToken(code))
+      const storedHash = Buffer.from(stored.code)
+      const isMatch = inputHash.length === storedHash.length && timingSafeEqual(inputHash, storedHash)
+      if (!isMatch) {
+        throw new AppError(400, '인증 코드가 올바르지 않습니다', 'VALIDATION_ERROR')
+      }
+    },
+
     async register(data: {
       email: string
       password: string
       name: string
+      code: string
     }): Promise<AuthResult> {
       const existing = await userRepository.findByEmail(data.email)
       if (existing) {
         throw new AppError(400, '이미 사용 중인 이메일입니다', 'VALIDATION_ERROR')
+      }
+
+      // 인증코드 최종 검증
+      const stored = await verificationCodeRepository.findLatestByEmail(data.email)
+      if (!stored) {
+        throw new AppError(400, '이메일 인증이 필요합니다', 'VALIDATION_ERROR')
+      }
+      if (stored.expiresAt < new Date()) {
+        throw new AppError(400, '인증 코드가 만료되었습니다. 재전송을 요청해주세요.', 'VALIDATION_ERROR')
+      }
+      const inputHash = Buffer.from(hashToken(data.code))
+      const storedHash = Buffer.from(stored.code)
+      const isMatch = inputHash.length === storedHash.length && timingSafeEqual(inputHash, storedHash)
+      if (!isMatch) {
+        throw new AppError(400, '이메일 인증 코드가 올바르지 않습니다', 'VALIDATION_ERROR')
       }
 
       const hashedPassword = await bcrypt.hash(data.password, 10)
@@ -68,7 +131,10 @@ export function createAuthService(app: FastifyInstance) {
         email: data.email,
         password: hashedPassword,
         name: data.name,
+        emailVerified: true,
       })
+
+      await verificationCodeRepository.deleteAllByEmail(data.email)
 
       const tokens = await createTokenPair(user.id, user.email)
       const { password: _, ...userWithoutPassword } = user
@@ -189,22 +255,18 @@ export function createAuthService(app: FastifyInstance) {
       if (!user) {
         const existingUser = await userRepository.findByEmail(googleUser.email)
         if (existingUser) {
-          if (existingUser.password) {
-            // 이메일/비밀번호로 가입된 계정 → 자동 연동 없이 에러
-            throw new AppError(
-              400,
-              '이미 이메일/비밀번호로 가입된 계정입니다. 기존 방식으로 로그인해주세요.',
-              'VALIDATION_ERROR',
-            )
-          }
-          // googleId만 없는 계정 → 연동
+          // 이메일/비밀번호 계정이든 아니든 Google ID 연동
           user = await userRepository.updateGoogleId(existingUser.id, googleUser.id)
+          if (!user.emailVerified) {
+            user = await userRepository.updateEmailVerified(user.id, true)
+          }
         } else {
-          // 신규 사용자 생성 (password 없음)
+          // 신규 사용자 생성 (password 없음, 이메일 자동 인증)
           user = await userRepository.create({
             email: googleUser.email,
             name: googleUser.name,
             googleId: googleUser.id,
+            emailVerified: true,
           })
         }
       }
@@ -213,6 +275,107 @@ export function createAuthService(app: FastifyInstance) {
       const { password: _, ...userWithoutPassword } = user
 
       return { ...tokens, user: userWithoutPassword }
+    },
+
+    async verifyEmail(userId: string, code: string): Promise<void> {
+      const user = await userRepository.findById(userId)
+      if (!user) {
+        throw new AppError(404, '사용자를 찾을 수 없습니다', 'NOT_FOUND')
+      }
+      if (user.emailVerified) {
+        throw new AppError(400, '이미 인증된 이메일입니다', 'VALIDATION_ERROR')
+      }
+
+      const stored = await verificationCodeRepository.findLatestByUserId(userId)
+      if (!stored) {
+        throw new AppError(400, '인증 코드가 존재하지 않습니다. 재전송을 요청해주세요.', 'VALIDATION_ERROR')
+      }
+      if (stored.expiresAt < new Date()) {
+        throw new AppError(400, '인증 코드가 만료되었습니다. 재전송을 요청해주세요.', 'VALIDATION_ERROR')
+      }
+
+      const inputHash = Buffer.from(hashToken(code))
+      const storedHash = Buffer.from(stored.code)
+      const isMatch = inputHash.length === storedHash.length && timingSafeEqual(inputHash, storedHash)
+      if (!isMatch) {
+        throw new AppError(400, '인증 코드가 올바르지 않습니다', 'VALIDATION_ERROR')
+      }
+
+      await userRepository.updateEmailVerified(userId, true)
+      await verificationCodeRepository.deleteAllByUserId(userId)
+    },
+
+    async resendVerificationEmail(userId: string): Promise<void> {
+      const user = await userRepository.findById(userId)
+      if (!user) {
+        throw new AppError(404, '사용자를 찾을 수 없습니다', 'NOT_FOUND')
+      }
+      if (user.emailVerified) {
+        throw new AppError(400, '이미 인증된 이메일입니다', 'VALIDATION_ERROR')
+      }
+
+      // 60초 rate limit
+      const latest = await verificationCodeRepository.findLatestByUserId(userId)
+      if (latest) {
+        const elapsed = Date.now() - latest.createdAt.getTime()
+        if (elapsed < 60 * 1000) {
+          const remaining = Math.ceil((60 * 1000 - elapsed) / 1000)
+          throw new AppError(429, `${remaining}초 후에 다시 요청해주세요`, 'RATE_LIMIT_EXCEEDED')
+        }
+      }
+
+      await verificationCodeRepository.deleteAllByUserId(userId)
+      const code = randomInt(100000, 1000000).toString()
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
+      await verificationCodeRepository.create(user.email, code, expiresAt, userId)
+      await emailService.sendVerificationEmail(user.email, code)
+    },
+
+    async requestPasswordReset(email: string): Promise<void> {
+      const user = await userRepository.findByEmail(email)
+      if (!user) {
+        throw new AppError(404, '등록되지 않은 이메일입니다', 'NOT_FOUND')
+      }
+      if (!user.password) {
+        throw new AppError(400, '구글 로그인으로 가입된 계정입니다', 'VALIDATION_ERROR')
+      }
+
+      // 60초 rate limit
+      const latest = await passwordResetTokenRepository.findLatestByUserId(user.id)
+      if (latest) {
+        const elapsed = Date.now() - latest.createdAt.getTime()
+        if (elapsed < 60 * 1000) {
+          const remaining = Math.ceil((60 * 1000 - elapsed) / 1000)
+          throw new AppError(429, `${remaining}초 후에 다시 요청해주세요`, 'RATE_LIMIT_EXCEEDED')
+        }
+      }
+
+      const rawToken = randomBytes(32).toString('hex')
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15분
+      await passwordResetTokenRepository.create(user.id, rawToken, expiresAt)
+
+      const frontendUrl = env.FRONTEND_URL.split(',')[0]
+      const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`
+      await emailService.sendPasswordResetEmail(user.email, resetLink)
+    },
+
+    async resetPassword(token: string, newPassword: string): Promise<void> {
+      const stored = await passwordResetTokenRepository.findByToken(token)
+      if (!stored) {
+        throw new AppError(400, '유효하지 않은 재설정 링크입니다', 'VALIDATION_ERROR')
+      }
+      if (stored.used) {
+        throw new AppError(400, '이미 사용된 재설정 링크입니다', 'VALIDATION_ERROR')
+      }
+      if (stored.expiresAt < new Date()) {
+        throw new AppError(400, '재설정 링크가 만료되었습니다. 다시 요청해주세요.', 'VALIDATION_ERROR')
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10)
+      await userRepository.updatePassword(stored.userId, hashedPassword)
+      await passwordResetTokenRepository.markUsed(stored.id)
+      // 보안: 기존 세션 전체 로그아웃
+      await refreshTokenRepository.deleteAllByUserId(stored.userId)
     },
 
     async getMe(userId: string): Promise<UserWithoutPassword> {

@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { authMiddleware } from '../middlewares/auth.middleware'
+import { emailVerifiedMiddleware } from '../middlewares/email-verified.middleware'
 import { analysisService } from '../services/analysis.service'
 import { success } from '../utils/apiResponse'
 import { JwtPayload } from '../types/fastify'
@@ -47,7 +48,7 @@ export async function analysisRoutes(app: FastifyInstance): Promise<void> {
         401: errorResponseSchema,
       },
     },
-    preHandler: authMiddleware,
+    preHandler: [authMiddleware, emailVerifiedMiddleware],
   }, async (request, reply) => {
     const { userId } = request.user as JwtPayload
     const history = await analysisService.getScoreHistory(userId)
