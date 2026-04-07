@@ -78,6 +78,7 @@ export interface User {
   email: string
   name: string
   googleId?: string | null
+  emailVerified: boolean
 }
 
 export const RECOMMENDABLE_SECTION_TYPES = ['summary', 'experience', 'projects', 'awards', 'education', 'activities'] as const

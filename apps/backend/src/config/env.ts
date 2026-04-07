@@ -18,6 +18,9 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   BACKEND_URL: z.string().optional(),
+  BREVO_API_KEY: z.string().min(1),
+  BREVO_FROM_EMAIL: z.string().email(),
+  BREVO_FROM_NAME: z.string().default('Scorely'),
 })
 
 const parsed = envSchema.safeParse(process.env)

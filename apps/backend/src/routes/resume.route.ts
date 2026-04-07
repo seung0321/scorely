@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { JobCategory, JOB_CATEGORIES, ResumeSections, RECOMMENDABLE_SECTION_TYPES } from '@scorely/types'
 import { authMiddleware } from '../middlewares/auth.middleware'
+import { emailVerifiedMiddleware } from '../middlewares/email-verified.middleware'
 import { createRateLimitMiddleware } from '../middlewares/rate-limit.middleware'
 import { resumeService } from '../services/resume.service'
 import { recommendSection } from '../services/gemini'
@@ -140,7 +141,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
         401: errorResponseSchema,
       },
     },
-    preHandler: authMiddleware,
+    preHandler: [authMiddleware, emailVerifiedMiddleware],
   }, async (request, reply) => {
     const { userId } = request.user as JwtPayload
     await resumeService.deleteAllResumes(userId)
@@ -174,7 +175,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
         401: errorResponseSchema,
       },
     },
-    preHandler: [authMiddleware, analysisRateLimit],
+    preHandler: [authMiddleware, emailVerifiedMiddleware, analysisRateLimit],
   }, async (request, reply) => {
     const { userId } = request.user as JwtPayload
 
@@ -247,7 +248,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
         404: errorResponseSchema,
       },
     },
-    preHandler: authMiddleware,
+    preHandler: [authMiddleware, emailVerifiedMiddleware],
   }, async (request, reply) => {
     const { userId } = request.user as JwtPayload
     const { resumeId } = request.params as { resumeId: string }
@@ -311,7 +312,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
         404: errorResponseSchema,
       },
     },
-    preHandler: authMiddleware,
+    preHandler: [authMiddleware, emailVerifiedMiddleware],
   }, async (request, reply) => {
     const { userId } = request.user as JwtPayload
     const { resumeId } = request.params as { resumeId: string }
@@ -362,7 +363,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
         404: errorResponseSchema,
       },
     },
-    preHandler: [authMiddleware, analysisRateLimit],
+    preHandler: [authMiddleware, emailVerifiedMiddleware, analysisRateLimit],
   }, async (request, reply) => {
     const { userId } = request.user as JwtPayload
     const { resumeId } = request.params as { resumeId: string }
@@ -405,7 +406,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
         404: errorResponseSchema,
       },
     },
-    preHandler: authMiddleware,
+    preHandler: [authMiddleware, emailVerifiedMiddleware],
   }, async (request, reply) => {
     const { userId } = request.user as JwtPayload
     const { resumeId } = request.params as { resumeId: string }
@@ -433,7 +434,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
         401: errorResponseSchema,
       },
     },
-    preHandler: authMiddleware,
+    preHandler: [authMiddleware, emailVerifiedMiddleware],
   }, async (request, reply) => {
     const { userId } = request.user as JwtPayload
     const history = await resumeService.getHistory(userId)
@@ -481,7 +482,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
         404: errorResponseSchema,
       },
     },
-    preHandler: [authMiddleware, recommendRateLimit],
+    preHandler: [authMiddleware, emailVerifiedMiddleware, recommendRateLimit],
   }, async (request, reply) => {
     const { userId } = request.user as JwtPayload
     const { resumeId } = request.params as { resumeId: string }
@@ -534,7 +535,7 @@ export async function resumeRoutes(app: FastifyInstance): Promise<void> {
         404: errorResponseSchema,
       },
     },
-    preHandler: authMiddleware,
+    preHandler: [authMiddleware, emailVerifiedMiddleware],
   }, async (request, reply) => {
     const { userId } = request.user as JwtPayload
     const { resumeId } = request.params as { resumeId: string }
