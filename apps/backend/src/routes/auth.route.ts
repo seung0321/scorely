@@ -17,6 +17,7 @@ const registerSchema = z.object({
     .regex(/[0-9]/, '비밀번호에 숫자를 포함해주세요')
     .regex(/[^a-zA-Z0-9]/, '비밀번호에 특수문자를 포함해주세요'),
   name: z.string().min(2, '이름은 최소 2자 이상이어야 합니다'),
+  code: z.string().length(6, '6자리 인증 코드를 입력해주세요'),
 })
 
 const loginSchema = z.object({
@@ -30,6 +31,28 @@ const refreshSchema = z.object({
 
 const logoutSchema = z.object({
   refreshToken: z.string().min(1, '리프레시 토큰을 입력해주세요'),
+})
+
+const sendEmailCodeSchema = z.object({
+  email: z.string().email('유효한 이메일을 입력해주세요'),
+})
+
+const checkEmailCodeSchema = z.object({
+  email: z.string().email('유효한 이메일을 입력해주세요'),
+  code: z.string().length(6, '6자리 인증 코드를 입력해주세요'),
+})
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email('유효한 이메일을 입력해주세요'),
+})
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, '토큰이 필요합니다'),
+  password: z.string()
+    .min(8, '비밀번호는 최소 8자 이상이어야 합니다')
+    .regex(/[a-zA-Z]/, '비밀번호에 영문자를 포함해주세요')
+    .regex(/[0-9]/, '비밀번호에 숫자를 포함해주세요')
+    .regex(/[^a-zA-Z0-9]/, '비밀번호에 특수문자를 포함해주세요'),
 })
 
 const userSchema = {
@@ -275,11 +298,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         refreshToken: result.refreshToken,
       })
       return reply.redirect(`${frontendUrl}/auth/callback?${params.toString()}`)
-    } catch (err) {
-      // 이메일/비밀번호 계정 충돌 시 별도 에러 코드로 안내
-      if (err instanceof AppError && err.statusCode === 400) {
-        return reply.redirect(`${frontendUrl}/login?error=email_conflict`)
-      }
+    } catch {
       return reply.redirect(`${frontendUrl}/login?error=oauth_failed`)
     }
   })
@@ -330,6 +349,139 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const { userId } = request.user as JwtPayload
     await authService.deleteAccount(userId)
     return reply.send(success(null, '회원 탈퇴가 완료되었습니다'))
+  })
+
+  // POST /api/auth/send-email-code — 회원가입 전 이메일 인증코드 발송
+  app.post('/send-email-code', {
+    schema: {
+      tags: ['Auth'],
+      summary: '회원가입 전 이메일 인증코드 발송',
+      body: {
+        type: 'object',
+        required: ['email'],
+        properties: {
+          email: { type: 'string', format: 'email' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+        400: errorResponseSchema,
+        429: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const parsed = sendEmailCodeSchema.safeParse(request.body)
+    if (!parsed.success) {
+      throw new AppError(400, parsed.error.errors[0]?.message ?? '입력값이 올바르지 않습니다', 'VALIDATION_ERROR')
+    }
+    await authService.sendEmailCode(parsed.data.email)
+    return reply.send(success(null, '인증 코드가 발송되었습니다'))
+  })
+
+  // POST /api/auth/check-email-code — 회원가입 전 이메일 인증코드 확인
+  app.post('/check-email-code', {
+    schema: {
+      tags: ['Auth'],
+      summary: '회원가입 전 이메일 인증코드 확인',
+      body: {
+        type: 'object',
+        required: ['email', 'code'],
+        properties: {
+          email: { type: 'string', format: 'email' },
+          code: { type: 'string', minLength: 6, maxLength: 6 },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+        400: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const parsed = checkEmailCodeSchema.safeParse(request.body)
+    if (!parsed.success) {
+      throw new AppError(400, parsed.error.errors[0]?.message ?? '입력값이 올바르지 않습니다', 'VALIDATION_ERROR')
+    }
+    await authService.checkEmailCode(parsed.data.email, parsed.data.code)
+    return reply.send(success(null, '이메일 인증이 완료되었습니다'))
+  })
+
+  // POST /api/auth/forgot-password — 비밀번호 재설정 요청
+  app.post('/forgot-password', {
+    schema: {
+      tags: ['Auth'],
+      summary: '비밀번호 재설정 요청',
+      body: {
+        type: 'object',
+        required: ['email'],
+        properties: {
+          email: { type: 'string', format: 'email' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+        400: errorResponseSchema,
+        404: errorResponseSchema,
+        429: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const parsed = forgotPasswordSchema.safeParse(request.body)
+    if (!parsed.success) {
+      throw new AppError(400, parsed.error.errors[0]?.message ?? '입력값이 올바르지 않습니다', 'VALIDATION_ERROR')
+    }
+    await authService.requestPasswordReset(parsed.data.email)
+    return reply.send(success(null, '비밀번호 재설정 링크를 이메일로 보냈습니다'))
+  })
+
+  // POST /api/auth/reset-password — 비밀번호 재설정
+  app.post('/reset-password', {
+    schema: {
+      tags: ['Auth'],
+      summary: '비밀번호 재설정',
+      body: {
+        type: 'object',
+        required: ['token', 'password'],
+        properties: {
+          token: { type: 'string' },
+          password: { type: 'string', minLength: 8 },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+        400: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const parsed = resetPasswordSchema.safeParse(request.body)
+    if (!parsed.success) {
+      throw new AppError(400, parsed.error.errors[0]?.message ?? '입력값이 올바르지 않습니다', 'VALIDATION_ERROR')
+    }
+    await authService.resetPassword(parsed.data.token, parsed.data.password)
+    return reply.send(success(null, '비밀번호가 성공적으로 변경되었습니다'))
   })
 
   // GET /api/auth/rate-limit-status — Rate limit 사용량 조회

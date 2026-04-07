@@ -1,10 +1,6 @@
-import { createHash } from 'crypto'
 import { prisma } from '../config/prisma'
 import { AppError } from '../middlewares/errorHandler'
-
-function hashToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex')
-}
+import { hashToken } from '../utils/hash'
 
 export const refreshTokenRepository = {
   async create(userId: string, token: string, expiresAt: Date): Promise<void> {
