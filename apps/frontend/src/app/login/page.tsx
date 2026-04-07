@@ -13,7 +13,6 @@ function LoginForm() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(() => {
     const e = searchParams.get('error')
-    if (e === 'email_conflict') return '이미 이메일/비밀번호로 가입된 계정입니다. 이메일로 로그인해주세요.'
     if (e === 'oauth_failed') return 'Google 로그인에 실패했습니다. 다시 시도해주세요.'
     return null
   })
@@ -66,7 +65,12 @@ function LoginForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-gray-700">비밀번호</label>
+                <Link href="/forgot-password" className="text-xs text-primary-600 hover:underline">
+                  비밀번호를 잊으셨나요?
+                </Link>
+              </div>
               <input
                 type="password"
                 value={password}

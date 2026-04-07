@@ -18,6 +18,7 @@ interface RegisterInput {
   email: string
   password: string
   name: string
+  code: string
 }
 
 interface AuthContextValue {
