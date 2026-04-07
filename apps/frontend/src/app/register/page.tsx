@@ -1,13 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth, getApiErrorMessage } from '@/contexts/AuthContext'
+import api from '@/lib/api'
+
+type EmailVerifyState = 'idle' | 'sending' | 'sent' | 'verified'
 
 interface FieldErrors {
   name?: string
   email?: string
+  code?: string
   password?: string
   passwordConfirm?: string
   terms?: string
@@ -18,8 +22,10 @@ interface FieldErrors {
 export default function RegisterPage() {
   const { register, loginWithGoogle, user, loading } = useAuth()
   const router = useRouter()
+
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [agreedTerms, setAgreedTerms] = useState(false)
@@ -27,14 +33,69 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<FieldErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const [emailVerifyState, setEmailVerifyState] = useState<EmailVerifyState>('idle')
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   useEffect(() => {
     if (!loading && user) router.replace('/upload')
   }, [user, loading, router])
 
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current)
+    }
+  }, [])
+
+  const startCooldown = () => {
+    setResendCooldown(60)
+    cooldownRef.current = setInterval(() => {
+      setResendCooldown((c) => {
+        if (c <= 1) {
+          clearInterval(cooldownRef.current!)
+          return 0
+        }
+        return c - 1
+      })
+    }, 1000)
+  }
+
+  const handleSendCode = async () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setErrors((prev) => ({ ...prev, email: '올바른 이메일 형식을 입력하세요.' }))
+      return
+    }
+    setErrors((prev) => ({ ...prev, email: undefined, code: undefined }))
+    setEmailVerifyState('sending')
+    try {
+      await api.post('/api/auth/send-email-code', { email })
+      setEmailVerifyState('sent')
+      startCooldown()
+    } catch (err) {
+      setErrors((prev) => ({ ...prev, email: getApiErrorMessage(err) }))
+      setEmailVerifyState('idle')
+    }
+  }
+
+  const handleCheckCode = async () => {
+    if (code.length !== 6) {
+      setErrors((prev) => ({ ...prev, code: '6자리 인증 코드를 입력해주세요.' }))
+      return
+    }
+    setErrors((prev) => ({ ...prev, code: undefined }))
+    try {
+      await api.post('/api/auth/check-email-code', { email, code })
+      setEmailVerifyState('verified')
+      if (cooldownRef.current) clearInterval(cooldownRef.current)
+    } catch (err) {
+      setErrors((prev) => ({ ...prev, code: getApiErrorMessage(err) }))
+    }
+  }
+
   const validate = (): boolean => {
     const next: FieldErrors = {}
     if (name.length < 2) next.name = '이름은 2자 이상이어야 합니다.'
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = '올바른 이메일 형식을 입력하세요.'
+    if (emailVerifyState !== 'verified') next.email = '이메일 인증을 완료해주세요.'
     if (password.length < 8) {
       next.password = '비밀번호는 8자 이상이어야 합니다.'
     } else if (!/[a-zA-Z]/.test(password)) {
@@ -56,7 +117,7 @@ export default function RegisterPage() {
     if (!validate()) return
     setIsSubmitting(true)
     try {
-      await register({ name, email, password })
+      await register({ name, email, password, code })
       router.push('/upload')
     } catch (err) {
       setErrors({ api: getApiErrorMessage(err) })
@@ -76,6 +137,7 @@ export default function RegisterPage() {
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* 이름 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">이름</label>
               <input
@@ -90,20 +152,85 @@ export default function RegisterPage() {
               {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name}</p>}
             </div>
 
+            {/* 이메일 + 인증번호 보내기 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">이메일</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@email.com"
-                className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none transition-colors ${
-                  errors.email ? 'border-red-400' : 'border-gray-300 focus:border-primary-500'
-                }`}
-              />
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (emailVerifyState !== 'idle') setEmailVerifyState('idle')
+                    setCode('')
+                  }}
+                  disabled={emailVerifyState === 'verified'}
+                  placeholder="example@email.com"
+                  className={`flex-1 border rounded-lg px-4 py-3 text-sm focus:outline-none transition-colors disabled:bg-gray-50 ${
+                    errors.email ? 'border-red-400' : 'border-gray-300 focus:border-primary-500'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={handleSendCode}
+                  disabled={emailVerifyState === 'sending' || emailVerifyState === 'verified' || resendCooldown > 0}
+                  className="shrink-0 px-3 py-2 text-xs font-medium border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 disabled:border-gray-300 disabled:text-gray-400 transition-colors"
+                >
+                  {emailVerifyState === 'sending'
+                    ? '전송 중...'
+                    : emailVerifyState === 'verified'
+                    ? '인증완료'
+                    : resendCooldown > 0
+                    ? `재전송 (${resendCooldown}s)`
+                    : emailVerifyState === 'sent'
+                    ? '재전송'
+                    : '인증번호 보내기'}
+                </button>
+              </div>
               {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
+              {emailVerifyState === 'verified' && (
+                <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  이메일 인증이 완료되었습니다
+                </p>
+              )}
             </div>
 
+            {/* 인증코드 입력 (코드 발송 후 표시) */}
+            {(emailVerifyState === 'sent') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">인증번호</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={code}
+                    onChange={(e) => {
+                      setCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+                      setErrors((prev) => ({ ...prev, code: undefined }))
+                    }}
+                    placeholder="6자리 인증번호 입력"
+                    className={`flex-1 border rounded-lg px-4 py-3 text-sm focus:outline-none transition-colors ${
+                      errors.code ? 'border-red-400' : 'border-gray-300 focus:border-primary-500'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCheckCode}
+                    className="shrink-0 px-3 py-2 text-xs font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  >
+                    인증하기
+                  </button>
+                </div>
+                {errors.code && <p className="mt-1 text-xs text-red-600">{errors.code}</p>}
+                <p className="mt-1 text-xs text-gray-400">이메일로 발송된 6자리 코드를 입력하세요 (10분 유효)</p>
+              </div>
+            )}
+
+            {/* 비밀번호 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호</label>
               <input
@@ -118,6 +245,7 @@ export default function RegisterPage() {
               {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
             </div>
 
+            {/* 비밀번호 확인 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호 확인</label>
               <input
@@ -132,6 +260,7 @@ export default function RegisterPage() {
               {errors.passwordConfirm && <p className="mt-1 text-xs text-red-600">{errors.passwordConfirm}</p>}
             </div>
 
+            {/* 동의 체크박스 */}
             <div className="space-y-2 pt-2">
               <label className="flex items-start gap-2 cursor-pointer">
                 <input
@@ -166,7 +295,7 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || emailVerifyState !== 'verified'}
               className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 text-white py-3 rounded-lg text-sm font-semibold transition-colors"
             >
               {isSubmitting ? '가입 중...' : '회원가입'}
