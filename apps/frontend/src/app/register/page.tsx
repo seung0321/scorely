@@ -135,7 +135,7 @@ export default function RegisterPage() {
           <p className="text-sm text-gray-500 mt-1">무료로 시작하세요</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* 이름 */}
             <div>
@@ -155,7 +155,7 @@ export default function RegisterPage() {
             {/* 이메일 + 인증번호 보내기 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">이메일</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   type="email"
                   value={email}
@@ -166,7 +166,7 @@ export default function RegisterPage() {
                   }}
                   disabled={emailVerifyState === 'verified'}
                   placeholder="example@email.com"
-                  className={`flex-1 border rounded-lg px-4 py-3 text-sm focus:outline-none transition-colors disabled:bg-gray-50 ${
+                  className={`w-full sm:flex-1 border rounded-lg px-4 py-3 text-sm focus:outline-none transition-colors disabled:bg-gray-50 ${
                     errors.email ? 'border-red-400' : 'border-gray-300 focus:border-primary-500'
                   }`}
                 />
@@ -174,7 +174,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={handleSendCode}
                   disabled={emailVerifyState === 'sending' || emailVerifyState === 'verified' || resendCooldown > 0}
-                  className="shrink-0 px-3 py-2 text-xs font-medium border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 disabled:border-gray-300 disabled:text-gray-400 transition-colors"
+                  className="w-full sm:w-auto shrink-0 px-3 py-2.5 text-xs font-medium border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 disabled:border-gray-300 disabled:text-gray-400 transition-colors"
                 >
                   {emailVerifyState === 'sending'
                     ? '전송 중...'
