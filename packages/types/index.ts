@@ -81,7 +81,7 @@ export interface User {
   emailVerified: boolean
 }
 
-export const RECOMMENDABLE_SECTION_TYPES = ['summary', 'experience', 'projects', 'awards', 'education', 'activities'] as const
+export const RECOMMENDABLE_SECTION_TYPES = ['summary', 'experience', 'projects', 'awards', 'education', 'activities', 'training', 'skills', 'certifications'] as const
 export type RecommendableSectionType = (typeof RECOMMENDABLE_SECTION_TYPES)[number]
 
 export interface SectionRecommendRequest {
