@@ -19,5 +19,5 @@ export const SECTION_ORDER: (keyof ResumeSections)[] = [
 ]
 
 export const RECOMMENDABLE_SECTIONS = new Set<keyof ResumeSections>([
-  'summary', 'experience', 'projects', 'awards', 'education', 'activities',
+  'summary', 'experience', 'projects', 'awards', 'education', 'activities', 'training', 'skills', 'certifications',
 ])

@@ -116,9 +116,9 @@ export default function VerifyEmailPage() {
           </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
           <form onSubmit={handleSubmit}>
-            <div onPaste={handlePaste} className="flex gap-2 justify-center mb-6">
+            <div onPaste={handlePaste} className="flex gap-1.5 sm:gap-2 justify-center mb-6">
               {digits.map((d, i) => (
                 <input
                   key={i}
@@ -129,7 +129,7 @@ export default function VerifyEmailPage() {
                   value={d}
                   onChange={(e) => handleDigitChange(i, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(i, e)}
-                  className={`w-12 h-14 text-center text-xl font-bold border rounded-lg focus:outline-none transition-colors ${
+                  className={`w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold border rounded-lg focus:outline-none transition-colors ${
                     error
                       ? 'border-red-400 focus:border-red-500'
                       : 'border-gray-300 focus:border-primary-500'

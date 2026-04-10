@@ -22,19 +22,28 @@ scorely/
 - Node.js + Fastify (Express 아님)
 - TypeScript strict 모드
 - Prisma ORM + PostgreSQL
-- JWT + bcryptjs 인증
-- Google Gemini 2.5 Flash API (@google/genai)
-- AWS S3 (PDF 저장)
+- JWT (`jsonwebtoken`) + `@fastify/jwt` + bcryptjs 인증
+  - Access Token: 30분, Refresh Token: 7일 (DB 저장, 로테이션)
+- Google OAuth 2.0 (GOOGLE_CLIENT_ID/SECRET, 선택적)
+- 이메일 발송: Brevo(SendinBlue) API (`BREVO_API_KEY`)
+- Google Gemini 2.5 Flash API (`@google/genai`)
+- AWS S3 (`@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`) — PDF 저장 + Presigned URL
+- Fastify 플러그인: `@fastify/cors`, `@fastify/multipart` (파일 업로드), `@fastify/swagger` + `@fastify/swagger-ui` (API 문서)
 - zod (환경변수 및 요청 검증)
-- pnpm
+- dotenv (환경변수 로딩)
+- Rate Limiting: 인메모리 Map 기반 (analysis 5회/5시간, recommend 10회/5시간, IP 기준)
+- 개발 도구: nodemon, ts-node, eslint, prettier
+- 패키지 매니저: pnpm
 
 ### 프론트엔드 (apps/frontend)
 - Next.js 14 App Router
+- React 18
 - TypeScript strict 모드
-- Tailwind CSS
-- TipTap 에디터 (@tiptap/react + @tiptap/starter-kit)
+- Tailwind CSS + `@tailwindcss/typography` + postcss + autoprefixer
+- TipTap 에디터 (`@tiptap/react` + `@tiptap/starter-kit` + `@tiptap/extension-placeholder`)
 - Chart.js + react-chartjs-2
 - axios
+- 개발 도구: eslint, eslint-config-next
 
 ### 배포
 - 백엔드: AWS EC2 + PM2 + Nginx
@@ -43,6 +52,12 @@ scorely/
 - 파일: AWS S3
 
 ## 핵심 비즈니스 로직
+
+### 회원가입 흐름
+1. POST /api/auth/send-email-code → 이메일로 6자리 인증코드 발송 (Brevo)
+2. POST /api/auth/check-email-code → 코드 확인
+3. POST /api/auth/register → 코드 포함하여 회원가입 완료
+- Google OAuth: GET /api/auth/google → 콜백 → `/auth/callback?token=&refreshToken=`
 
 ### 이력서 업로드 흐름
 1. PDF 업로드 → S3 저장
@@ -66,6 +81,9 @@ scorely/
 5. 사용자가 "적용" 버튼으로 에디터에 반영
 
 ### DB 핵심 필드
+- User.emailVerified: 이메일 인증 여부 (Google OAuth는 가입 시 true)
+- User.googleId: Google OAuth 연동 ID (nullable)
+- User.password: nullable (Google OAuth 전용 계정은 null)
 - Resume.extractedText: PDF 최초 추출 원본 (불변)
 - Resume.editedText: 사용자 수정 텍스트 (재분석에 사용)
 - Resume.version: 버전 번호 (재분석마다 증가)
@@ -79,6 +97,9 @@ scorely/
 - Analysis.structureScore: 이력서 구성/가독성 점수
 - Analysis.totalScore: 5개 점수 평균 (반올림)
 - Analysis.penalties: 감점 항목 (category, reason, deduction)
+- RefreshToken: userId + 해시된 토큰 + expiresAt (Cascade 삭제)
+- VerificationCode: email + 6자리 코드 + expiresAt (회원가입 전 이메일 인증)
+- PasswordResetToken: userId + 해시된 토큰 + used + expiresAt
 
 ## 신입 전용 분석 특징
 - **경력 모드 없음**: 모든 분석은 신입 기준으로만 평가
@@ -100,7 +121,8 @@ scorely/
 - 에러는 반드시 AppError로 throw
   예: throw new AppError(404, '이력서를 찾을 수 없습니다', 'NOT_FOUND')
 - 에러 코드: UNAUTHORIZED(401), FORBIDDEN(403), NOT_FOUND(404),
-  VALIDATION_ERROR(400), AI_ERROR(500), S3_ERROR(500), INTERNAL_ERROR(500)
+  VALIDATION_ERROR(400), AI_ERROR(500), S3_ERROR(500), INTERNAL_ERROR(500),
+  RATE_LIMIT_EXCEEDED(429)
 - 응답 형식 통일:
   성공: { success: true, data: T, message?: string }
   실패: { success: false, error: { code: string, message: string } }
@@ -114,40 +136,70 @@ scorely/
 - API 호출은 src/lib/api.ts의 axios 인스턴스 사용
 
 ## API 엔드포인트 목록
-POST   /api/auth/register
-POST   /api/auth/login
-GET    /api/auth/me
 
-POST   /api/resume/upload                      # PDF 업로드 + 최초 분석
-PATCH  /api/resume/:id/text                   # editedText 자동 저장
-PATCH  /api/resume/:id/sections               # 섹션별 텍스트 저장
-POST   /api/resume/:id/reanalyze              # 재분석 (새 버전 생성)
-POST   /api/resume/:id/section-recommend      # 섹션별 AI 추천 (NEW)
-GET    /api/resume/history                    # 전체 버전 목록
-GET    /api/resume/:id                        # 특정 버전 상세
-DELETE /api/resume/:id                        # 이력서 삭제
+### 인증 (/api/auth)
+```
+POST   /api/auth/send-email-code        # 회원가입 전 이메일 인증코드 발송 (Brevo)
+POST   /api/auth/check-email-code       # 이메일 인증코드 확인
+POST   /api/auth/register               # 회원가입 (code 필드 포함)
+POST   /api/auth/login                  # 로그인 → { accessToken, refreshToken, user }
+POST   /api/auth/refresh                # Access Token 갱신 (refreshToken → 새 쌍 발급)
+POST   /api/auth/logout                 # 로그아웃 (DB에서 RT 삭제)
+GET    /api/auth/me                     # 내 정보 조회 (auth 필요)
+DELETE /api/auth/account                # 회원 탈퇴 (auth 필요)
+GET    /api/auth/google                 # Google OAuth 시작 (redirect)
+GET    /api/auth/google/callback        # Google OAuth 콜백
+GET    /api/auth/rate-limit-status      # AI 사용량 조회 (auth 필요)
+POST   /api/auth/forgot-password        # 비밀번호 재설정 이메일 발송
+POST   /api/auth/reset-password         # 비밀번호 재설정 (token + newPassword)
+```
 
-GET    /api/analysis/history                  # 점수 히스토리 (차트용)
+### 이력서 (/api/resume)
+```
+POST   /api/resume/upload               # PDF 업로드 + 최초 분석
+DELETE /api/resume/all                  # 내 이력서 전체 삭제
+PATCH  /api/resume/:id/text             # editedText 자동 저장
+PATCH  /api/resume/:id/sections         # 섹션별 텍스트 저장
+POST   /api/resume/:id/reanalyze        # 재분석 (새 버전 생성)
+POST   /api/resume/:id/section-recommend # 섹션별 AI 추천
+GET    /api/resume/history              # 전체 버전 목록
+GET    /api/resume/:id                  # 특정 버전 상세
+DELETE /api/resume/:id                  # 이력서 단건 삭제
+```
 
-GET    /health                                # 서버 상태 확인
-GET    /docs                                  # Swagger UI
+### 분석 (/api/analysis)
+```
+GET    /api/analysis/history            # 점수 히스토리 (차트용)
+```
+
+### 기타
+```
+GET    /health                          # 서버 상태 확인
+GET    /docs                            # Swagger UI
+```
 
 ### section-recommend 상세
 - Body: { sectionType, content, jobCategory }
-- sectionType: 'summary' | 'experience' | 'projects' | 'awards' | 'education' | 'activities'
+- sectionType: 'summary' | 'experience' | 'projects' | 'awards' | 'education' | 'activities' | 'training' | 'skills' | 'certifications'
 - Response: { recommendedText: string }
 - 현재 분석의 improvements/penalties를 context로 Gemini에 전달
+- Rate limit: 10회/5시간 (IP 기준)
 
 ## 프론트엔드 페이지 구조
 - `/` - 랜딩 (신입 취준생 타겟 UI)
-- `/register` - 회원가입
-- `/login` - 로그인
+- `/register` - 회원가입 (이메일 인증코드 발송 → 확인 → 가입 인라인 플로우)
+- `/login` - 로그인 + Google OAuth 버튼
+- `/verify-email` - 로그인 후 이메일 미인증 시 6자리 코드 입력 페이지 (재전송 포함)
+- `/forgot-password` - 비밀번호 찾기 (이메일 입력)
+- `/reset-password` - 비밀번호 재설정 (URL token 파라미터)
+- `/auth/callback` - Google OAuth 콜백 처리 (토큰 저장 후 redirect)
 - `/upload` - PDF 업로드 + 직군 선택
 - `/analysis/[id]` - 분석 결과 + TipTap 에디터 + RecommendPanel
 - `/history` - 버전 히스토리 + 점수 차트
+- `/mypage` - 내 정보 + AI 사용량 (분석 5회/추천 10회) + 이력서 전체 삭제 + 회원 탈퇴
 
 ## 주요 컴포넌트
-- `RecommendPanel.tsx` - 섹션별 AI 추천 사이드바 (NEW)
+- `RecommendPanel.tsx` - 섹션별 AI 추천 사이드바
   - 상태: idle → loading → done/error
   - 적용 버튼으로 에디터에 직접 반영
 - `ScoreDashboard.tsx` - 5개 점수 바 + 레이더 차트 + oneLiner
@@ -155,15 +207,18 @@ GET    /docs                                  # Swagger UI
 - `RadarChart.tsx` - 5차원 레이더 차트
 - `FeedbackList.tsx` - 강점/개선사항 리스트
 - `HistoryChart.tsx` - 버전별 점수 추이 라인 차트
+- `ConfirmModal.tsx` - 공통 확인 모달 (위험 동작용)
 
 ## 섹션 관련 상수 (apps/frontend/src/constants/sections.ts)
 - `SECTION_ORDER`: summary, experience, education, training, projects, skills, certifications, activities, awards, coverLetter
-- `RECOMMENDABLE_SECTIONS`: summary, experience, projects, awards, education, activities (AI 추천 가능 섹션)
-- **coverLetter**: 에디터에서 편집 가능하나 재분석 텍스트에서 제외
+- `RECOMMENDABLE_SECTIONS`: summary, experience, projects, awards, education, activities, training, skills, certifications (AI 추천 가능 — coverLetter 제외 전체)
+- **coverLetter**: 에디터에서 편집 가능하나 재분석 및 AI 추천 대상에서 제외
 
 ## Gemini 서비스 구조 (apps/backend/src/services/gemini/)
 - `analyze.ts` - 진입점 (analyzeResume, extractTextAndAnalyze, recommendSection)
 - `prompt-builder.ts` - buildPrompt / buildExtractPrompt / buildSectionRecommendPrompt
+  - SECTION_LABEL_MAP: summary, experience, projects, awards, education, activities, training, skills, certifications
+  - SECTION_SCORE_MAP: 섹션→채점영역 매핑 (training→[expertise,experience], skills/certifications→[expertise])
 - `response-parser.ts` - AI 응답 파싱/검증, totalScore 계산
 - `types.ts` - 내부 타입 정의
 - `category-guides/` - 직군별 가이드 13개 (각각 criteria, keywords, newGradFocus, newGradScoreGuide 포함)
@@ -171,24 +226,42 @@ GET    /docs                                  # Swagger UI
 
 ## 환경변수 목록
 ### 백엔드 (.env)
+```
 DATABASE_URL
 JWT_SECRET
+REFRESH_TOKEN_SECRET
 AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY
 AWS_REGION
 AWS_S3_BUCKET
 GEMINI_API_KEY
+BREVO_API_KEY
+BREVO_FROM_EMAIL
+BREVO_FROM_NAME=Scorely
 PORT=3000
 NODE_ENV=development
 FRONTEND_URL=http://localhost:3001
+GOOGLE_CLIENT_ID=         # optional, Google OAuth 사용 시
+GOOGLE_CLIENT_SECRET=     # optional
+BACKEND_URL=              # optional, 콜백 URL 자동 추출로 대부분 불필요
+```
 
 ### 프론트엔드 (.env.local)
+```
 NEXT_PUBLIC_API_URL=http://localhost:3000
+```
 
 ## 직군 목록 (JobCategory)
 'IT개발·데이터' | '디자인' | '마케팅·광고' | '경영·기획' | '영업·판매' |
 '회계·세무·재무' | '인사·노무' | '의료·제약' | '금융·보험' | '연구·R&D' |
 '교육' | '생산·제조' | '기타'
+
+## Rate Limit 정책
+- **이력서 분석** (upload + reanalyze): 5회/5시간 (IP 기준)
+- **AI 섹션 추천** (section-recommend): 10회/5시간 (IP 기준)
+- 인메모리 Map 기반 (서버 재시작 시 초기화)
+- 응답 헤더: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
+- 초과 시 429 RATE_LIMIT_EXCEEDED
 
 ## 주의사항
 - pnpm 사용 (npm, yarn 사용 금지)
@@ -197,12 +270,13 @@ NEXT_PUBLIC_API_URL=http://localhost:3000
 - AWS SDK v3 사용 (@aws-sdk/client-s3)
 - Gemini model: "gemini-2.5-flash"
 - Gemini 패키지: @google/genai
-- JWT 만료: 7일
+- Access Token 만료: 30분 / Refresh Token 만료: 7일 (DB 저장)
 - PDF 최대 크기: 10MB
 - bcryptjs saltRounds: 10
 - experienceLevel은 항상 "신입" (경력 모드 코드 추가 금지)
 - 재분석 시 editedText만 사용 (sections 데이터 미포함)
 - coverLetter는 재분석 및 AI 추천 대상에서 제외
+- Google OAuth: 최초 로그인 시 계정 자동 생성, emailVerified=true 설정
 
 ## PR 문서 작성 규칙
 사용자가 "PR 작성해줘" 또는 "PR 문서 만들어줘"라고 하면 아래 절차를 자동으로 따른다.
