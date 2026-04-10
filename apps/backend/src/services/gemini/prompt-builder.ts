@@ -276,6 +276,9 @@ const SECTION_LABEL_MAP: Record<RecommendableSectionType, string> = {
   awards: '수상/공모전',
   education: '학력',
   activities: '대외활동',
+  training: '교육 이수',
+  skills: '스킬',
+  certifications: '자격증',
 }
 
 /** 섹션 타입과 채점 영역 매핑 */
@@ -286,6 +289,9 @@ const SECTION_SCORE_MAP: Record<RecommendableSectionType, string[]> = {
   awards: ['achievement'],
   education: ['expertise'],
   activities: ['experience'],
+  training: ['expertise', 'experience'],
+  skills: ['expertise'],
+  certifications: ['expertise'],
 }
 
 export interface RecommendContext {
